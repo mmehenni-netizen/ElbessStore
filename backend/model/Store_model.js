@@ -18,6 +18,10 @@ const StoreSchema = new  Schema({
         type : Number,
         default:0,
     },
+    totalRates: {
+        type : Number,
+        default: 0
+    },
     Rating: {
         type : Number,
         min:0,

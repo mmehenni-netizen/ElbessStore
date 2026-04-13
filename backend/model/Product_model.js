@@ -16,6 +16,10 @@ const ProductSchema = new  Schema({
         max:5,
         default:0,
     },
+    totalRates: {
+        type : Number,
+        default: 0
+    },
     TotalQuantity:{
         type:Number,
         required:true

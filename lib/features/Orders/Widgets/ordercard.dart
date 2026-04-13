@@ -43,24 +43,29 @@ class Ordercard extends StatelessWidget {
     }
   }
 
+  String _statusLabel() {
+    if (status.isEmpty) return status;
+    return status[0].toUpperCase() + status.substring(1).toLowerCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ds = SizeConfig.defaultSize!;
+    final statusColor = _statusColor();
     return Material(
-      elevation: 3,
-      shadowColor: Colors.black12,
-      borderRadius: BorderRadius.circular(ds * 2),
+      elevation: 8,
+      shadowColor: Colors.black.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(ds * 2.2),
       child: Container(
         padding: EdgeInsets.all(ds * 2),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(ds * 2),
-          border: Border.all(color: Colors.black, width: 1),
+          borderRadius: BorderRadius.circular(ds * 2.2),
+          border: Border.all(color: Colors.black.withOpacity(0.08), width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top row: #number, status badge, price
             Row(
               children: [
                 Text(
@@ -69,14 +74,15 @@ class Ordercard extends StatelessWidget {
                 ),
                 Gap(ds),
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: ds * 1.2, vertical: ds * 0.3),
+                  padding: EdgeInsets.symmetric(horizontal: ds * 1.2, vertical: ds * 0.45),
                   decoration: BoxDecoration(
-                    color: _statusColor().withOpacity(0.15),
+                    color: statusColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(ds * 2),
+                    border: Border.all(color: statusColor.withOpacity(0.35), width: 1),
                   ),
                   child: Text(
-                    status,
-                    style: TextStyle(fontSize: ds * 1.1, fontFamily: "semi", color: _statusColor()),
+                    _statusLabel(),
+                    style: TextStyle(fontSize: ds * 1.15, fontFamily: "semi", color: statusColor),
                   ),
                 ),
                 Spacer(),
@@ -87,16 +93,13 @@ class Ordercard extends StatelessWidget {
               ],
             ),
             Gap(ds * 0.8),
-            // Product name
             Text(
               productName,
               style: TextStyle(fontSize: ds * 2, fontFamily: "bold", color: Colors.black),
             ),
             Gap(ds * 1.5),
-            // Divider
             Divider(color: Colors.grey.shade200, thickness: 1),
             Gap(ds * 1),
-            // Details grid
             Row(
               children: [
                 Expanded(
@@ -147,25 +150,40 @@ class Ordercard extends StatelessWidget {
               ],
             ),
             Gap(ds * 2),
-            // Update Status button
             Center(
-              child: GestureDetector(
+              child: InkWell(
                 onTap: onUpdateStatus,
+                borderRadius: BorderRadius.circular(ds * 3),
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: ds * 3, vertical: ds * 1.2),
+                  padding: EdgeInsets.symmetric(horizontal: ds * 2.4, vertical: ds * 1.1),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(ds * 3),
-                    border: Border.all(color: Colors.grey.shade400, width: 1),
+                    gradient: LinearGradient(
+                      colors: [statusColor.withOpacity(0.13), statusColor.withOpacity(0.06)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    border: Border.all(color: statusColor.withOpacity(0.5), width: 1),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      Container(
+                        width: ds * 2.1,
+                        height: ds * 2.1,
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(CupertinoIcons.refresh, size: ds * 1.3, color: statusColor),
+                      ),
+                      Gap(ds * 0.7),
                       Text(
                         "Update Status",
-                        style: TextStyle(fontSize: ds * 1.5, fontFamily: "semi", color: Colors.black),
+                        style: TextStyle(fontSize: ds * 1.45, fontFamily: "semi", color: Colors.black87),
                       ),
-                      Gap(ds * 0.5),
-                      Icon(CupertinoIcons.chevron_right, size: ds * 1.5, color: Colors.black),
+                      Gap(ds * 0.6),
+                      Icon(CupertinoIcons.chevron_right, size: ds * 1.3, color: Colors.black54),
                     ],
                   ),
                 ),

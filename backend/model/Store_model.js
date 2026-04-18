@@ -1,74 +1,87 @@
 const mongoose = require('mongoose')
 const Schema =mongoose.Schema
 
-const StoreSchema = new  Schema({
-    Name : {
-        type:String,
-        required:true
-    },
-    Location : {
-        type:String,
-        required:true
-    },
-    Description: {
+const StoreSchema = new Schema({
+  name: {
+    type: String,
+    required: true,
+  },
+  location: {
+    type: String,
+    required: true,
+  },
+  description: {
     type: String,
     default: "",
-    },
-    ActiveProducts: {
-        type : Number,
-        default:0,
-    },
-    totalRates: {
-        type : Number,
-        default: 0
-    },
-    Rating: {
-        type : Number,
-        min:0,
-        max:5,
-        default:0,
-    },
-    Revenus :{
-        type:Number,
-        default:0
-    },
-    ShippingTime: {
-        type : Number,
-        default:3,
-    }, 
-    products:[{
+  },
+  activeProducts: {
+    type: Number,
+    default: 0,
+  },
+
+  rates: [
+    {
+      user: {
         type: Schema.Types.ObjectId,
-        ref: 'Product'  
-    }],
-    Oreders:{
-        type: Schema.Types.ObjectId,
-        ref:'Order'
+        ref: "User",
+      },
+      rate: {
+        type: Number,
+        min: 0,
+        max: 5,
+        default: 0,
+      },
     },
-    TotalOrders :{
-        type:Number,
-        default:0
+  ],
+
+  rating: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0,
+  },
+  revenus: {
+    type: Number,
+    default: 0,
+  },
+  shippingTime: {
+    type: Number,
+    default: 3,
+  },
+  products: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Product",
     },
-    Address : {
-        type:String,
-        required:true
-    },
-    Password : {
-        type:String,
-        required:true
-    },
-    isEmailVerified: {
+  ],
+  orders: {
+    type: Schema.Types.ObjectId,
+    ref: "Order",
+  },
+  totalOrders: {
+    type: Number,
+    default: 0,
+  },
+  address: {
+    type: String,
+    required: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  isEmailVerified: {
     type: Boolean,
     default: false,
-    },
-    EmailVerificationToken: {
-        type : String,
-
-    },
-    Logo :{
-        type:String,
-        default:"/uploads/DefaultLogo.png"
-    }
-})
+  },
+  emailVerificationToken: {
+    type: String,
+  },
+  logo: {
+    type: String,
+    default: "/uploads/DefaultLogo.png",
+  },
+});
 
 const Store = mongoose.model('Store',StoreSchema)
 

@@ -2,60 +2,95 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 
-const OrderSchema = new Schema(
-  {
-    store: {
-      type: Schema.Types.ObjectId,
-      ref: 'Store',
-      required: true,
-    },
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: 'Users',
-      required: true,
-    },
-    type: {
-      type: String,
-      enum: ['At Home', 'In Store'],
-      default: 'At Home',
-    },
-    products: [
-      {
-        product: {
-          type: Schema.Types.ObjectId,
-          ref: 'Product',   // fixed: was pointing to 'Users'
-          required: true,
-        },
-        quantity: {
-          type: Number,
-          required: true,
-          min: 1,
-          default: 1,
-        },
-        price: {
-          type: Number,
-          required: true,
-        },
-        size:  { type: String, default: '' },
-        color: { type: String, default: '' },
-      },
-    ],
-    status: {
-      type: String,                               
-      enum: ['prepared', 'confirmed', 'shipped', 'delivered', 'cancelled'],
-      default: 'prepared',
-    },
-    totalPrice: {
-      type: Number,
-      required: true,
-    },
-    cancelReason: {
-      type: String,
-      default: '',
-    },
+const orderSchema = new Schema({
+  user: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
   },
-  { timestamps: true }   // adds createdAt + updatedAt automatically
-)
+  store: {
+    type: Schema.Types.ObjectId,
+    ref: "Store",
+    required: true,
+  },
 
-const Order = mongoose.model('Order', OrderSchema)
+  product: {
+    type: Schema.Types.ObjectId,
+    ref: "Product",
+    required: true,
+  },
+
+  quantity: {
+    type: Number,
+    required: true,
+  },
+
+  office: {
+    type: Boolean,
+    required: true,
+  },
+
+  domicile: {
+    type: Boolean,
+    required: true,
+  },
+
+  confirmed: {
+    type: Boolean,
+    default: false,
+  },
+
+  rejected: {
+    type: Boolean,
+    default: false,
+  },
+
+  prepared: {
+    type: Boolean,
+    default: false,
+  },
+
+  shipped: {
+    type: Boolean,
+    default: false,
+  },
+
+  delivered: {
+    type: Boolean,
+    default: false,
+  },
+
+  canceled: {
+    type: Boolean,
+    default: false,
+  },
+
+  confirmationDate: {
+    type: Date,
+    default: null,
+  },
+
+  preparationDate: {
+    type: Date,
+    default: null,
+  },
+
+  shippingDate: {
+    type: Date,
+    default: null,
+  },
+
+  deliveryDate: {
+    type: Date,
+    default: null,
+  },
+
+  cancellationDate: {
+    type: Date,
+    default: null,
+  },
+});
+
+
+const Order = mongoose.model('Order', orderSchema)
 module.exports = Order

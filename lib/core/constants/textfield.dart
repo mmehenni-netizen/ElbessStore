@@ -9,6 +9,9 @@ class CustomTextField extends StatefulWidget {
     this.prefixIcon,
     this.suffixIcon,
     this.obscureText = false,
+    this.controller,
+    this.validator,
+    this.keyboardType,
   });
 
   final String hinttext;
@@ -17,6 +20,9 @@ class CustomTextField extends StatefulWidget {
   final IconData? prefixIcon;
   final Widget? suffixIcon;
   final bool obscureText;
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -51,6 +57,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 5.0),
           child: TextFormField(
+            controller: widget.controller,
+            validator: widget.validator,
+            keyboardType: widget.keyboardType,
             obscureText: _isObscured,
             decoration: InputDecoration(
               constraints: BoxConstraints(minHeight: widget.height ?? 56),
@@ -100,11 +109,23 @@ class _CustomTextFieldState extends State<CustomTextField> {
 }
 
 class FillTextField extends StatelessWidget {
-  const FillTextField({super.key, required this.hint});
+  const FillTextField({
+    super.key,
+    required this.hint,
+    this.controller,
+    this.validator,
+    this.keyboardType,
+  });
   final String hint;
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
   @override
   Widget build(BuildContext context) {
     return TextFormField(
+      controller: controller,
+      validator: validator,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(

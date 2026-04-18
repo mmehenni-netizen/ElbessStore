@@ -1,15 +1,73 @@
 import 'package:elbess_store/core/constants/colors.dart';
+import 'package:elbess_store/core/utils/pref_helpers%20.dart';
 import 'package:elbess_store/core/utils/size_config.dart';
-import 'package:elbess_store/features/Home/Widgets/customcard.dart';
+import 'package:elbess_store/features/Add/data/ProductModel.dart';
+import 'package:elbess_store/features/Add/data/Product_repo.dart';
+import 'package:elbess_store/features/Home/data/home_dashboard_repo.dart';
 import 'package:elbess_store/features/Home/Widgets/customstockwarncard.dart';
 import 'package:elbess_store/features/Home/Widgets/homeordercard.dart';
+import 'package:elbess_store/features/Home/Widgets/weekly_overview_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:gap/gap.dart';
 
-class Homebody extends StatelessWidget {
+class Homebody extends StatefulWidget {
   final PageController? pageController;
   const Homebody({super.key, this.pageController});
+
+  @override
+  State<Homebody> createState() => _HomebodyState();
+}
+
+class _HomebodyState extends State<Homebody> {
+  String _storeName = 'Store';
+  final ProductRepo _productRepo = ProductRepo();
+  final HomeDashboardRepository _dashboardRepository = HomeDashboardRepository();
+  late final Future<List<ProductModel>> _productsFuture;
+  late final Future<WeeklyOverviewSummary> _dashboardFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStoreName();
+    _productsFuture = getAllProduct();
+    _dashboardFuture = getDashboardOverview();
+  }
+
+  Future<void> _loadStoreName() async {
+    final savedName = await PrefHelpers.getStoreName();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _storeName = (savedName == null || savedName.trim().isEmpty)
+          ? 'Store'
+          : savedName.trim();
+    });
+  }
+
+  Future<List<ProductModel>> getAllProduct() async {
+    final storeId = await PrefHelpers.getStoreId();
+    if (storeId == null || storeId.trim().isEmpty) {
+      throw Exception('Missing store id. Please login again.');
+    }
+
+    return _productRepo.getInventory(storeId.trim());
+  }
+
+  Future<WeeklyOverviewSummary> getDashboardOverview() async {
+    final storeId = await PrefHelpers.getStoreId();
+    if (storeId == null || storeId.trim().isEmpty) {
+      throw Exception('Missing store id. Please login again.');
+    }
+
+    return _dashboardRepository.getWeeklyOverview(storeId.trim());
+  }
+
+  List<ProductModel> _getLowStockProducts(List<ProductModel> products) {
+    return products.where((product) => product.totalQuantity <= 5).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,27 +82,15 @@ class Homebody extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: ds * 5),
-          
-            Text("Welcome,",style: TextStyle( fontSize: ds * 1.8, fontFamily: "semi",color: Colors.black),),
-            Text("Stepx",style: TextStyle( fontSize: ds * 3, fontFamily: "bold",color:AppColors.primary ),),
-            Gap(ds * 2.5),
-            Row(
-              children: [
-                Customcard(txt: "Total orders", icn: CupertinoIcons.cube_box, nmbr: "128", clr: Color(0xffC3DBFF)),
-                Gap(ds * 2),
-                Customcard(txt: "Revenus", icn: CupertinoIcons.graph_square, nmbr: "12040 dz", clr: Color(0xffD8FFDA))
-                
-              ],
-            ), Gap(ds * 2),
-            Row(
-              children: [
-                Customcard(txt: "Low Stock", icn: CupertinoIcons.exclamationmark_triangle, nmbr: "12", clr: Color(0xffFFC192)),
-                Gap(ds * 2),
-                Customcard(txt: "Delivered", icn: CupertinoIcons.time, nmbr: "84", clr: Color(0xffF9B6FF))
-                
-              ],
+            FutureBuilder<WeeklyOverviewSummary>(
+              future: _dashboardFuture,
+              builder: (context, snapshot) {
+                final summary = snapshot.data ?? WeeklyOverviewSummary.empty();
+                return WeeklyOverviewCard(summary: summary);
+              },
             ),
-            Gap(ds * 5),
+            Gap(ds * 3),
+
             Row(
               children: [
                 Icon(CupertinoIcons.exclamationmark_triangle, color: Colors.red, size: ds * 2,),
@@ -53,20 +99,60 @@ class Homebody extends StatelessWidget {
               ],
             ),
             Gap(ds * 1.5),
-            ...List.generate(2, (index) {
-              final items = [
-                {"name": "Classic White Tee", "category": "T-shirt", "left": "3 left"},
-                {"name": "Black Hoodie", "category": "Hoodie", "left": "5 left"},
-              ];
-              return Padding(
-                padding: EdgeInsets.only(bottom: ds * 1.5),
-                child: Customstockwarncard(
-                  productname: items[index]["name"]!,
-                  productcategory: items[index]["category"]!,
-                  productsleft: items[index]["left"]!,
-                ),
-              );
-            }),
+            FutureBuilder<List<ProductModel>>(
+              future: _productsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: ds * 1.5),
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: ds * 1.5),
+                    child: Text(
+                      snapshot.error.toString(),
+                      style: TextStyle(
+                        fontFamily: 'medium',
+                        fontSize: ds * 1.1,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  );
+                }
+
+                final lowStockProducts = _getLowStockProducts(snapshot.data ?? const []);
+
+                if (lowStockProducts.isEmpty) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: ds * 1.5),
+                    child: Text(
+                      'No low stock products',
+                      style: TextStyle(
+                        fontFamily: 'medium',
+                        fontSize: ds * 1.1,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: lowStockProducts.map((product) {
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: ds * 1.5),
+                      child: Customstockwarncard(
+                        productname: product.name,
+                        productcategory: product.category,
+                        productsleft: '${product.totalQuantity} left',
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
             Gap(ds * 2.5),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -74,29 +160,68 @@ class Homebody extends StatelessWidget {
               Text("Last Orders", style: TextStyle(fontSize: ds * 2.3, fontFamily: "semi", color: Colors.black),),
               GestureDetector(
                 onTap: () {
-                  pageController?.animateToPage(1, duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
+                  widget.pageController?.animateToPage(1, duration: Duration(milliseconds: 300), curve: Curves.easeInOut);
                 },
                 child: Text("View all",style: TextStyle(fontSize: ds * 1.2, fontFamily: "regular", color: AppColors.primary),),
               )
             ],
           ),
           Gap(ds * 1.5),
-          ...List.generate(3, (index) {
-            final orders = [
-              {"img": "assets/Images/clothes/item1.png", "name": "Classic White Tee", "count": "#100", "price": "2400 dz"},
-              {"img": "assets/Images/clothes/item2.png", "name": "Black Hoodie", "count": "#191", "price": "5000 dz"},
-              {"img": "assets/Images/clothes/item3.png", "name": "Blue Jeans", "count": "#232", "price": "3600 dz"},
-            ];
-            return Padding(
-              padding: EdgeInsets.only(bottom: ds * 1.5),
-              child: Homeordercard(
-                img: orders[index]["img"]!,
-                productname: orders[index]["name"]!,
-                ordercount: orders[index]["count"]!,
-                price: orders[index]["price"]!,
-              ),
-            );
-          }),
+          FutureBuilder<WeeklyOverviewSummary>(
+            future: _dashboardFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(vertical: ds * 1.5),
+                  child: const Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (snapshot.hasError) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(vertical: ds * 1.5),
+                  child: Text(
+                    snapshot.error.toString(),
+                    style: TextStyle(
+                      fontFamily: 'medium',
+                      fontSize: ds * 1.1,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
+                );
+              }
+
+              final recentOrders = (snapshot.data ?? WeeklyOverviewSummary.empty()).recentOrders;
+
+              if (recentOrders.isEmpty) {
+                return Padding(
+                  padding: EdgeInsets.symmetric(vertical: ds * 1.5),
+                  child: Text(
+                    'No recent orders',
+                    style: TextStyle(
+                      fontFamily: 'medium',
+                      fontSize: ds * 1.1,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                children: recentOrders.take(3).map((order) {
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: ds * 1.5),
+                    child: Homeordercard(
+                      img: order.imageAsset,
+                      productname: order.title,
+                      ordercount: '${order.orderNumber} · ${order.quantityLabel} · ${order.status}',
+                      price: order.priceLabel,
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
 
               
             ],

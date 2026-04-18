@@ -3,8 +3,11 @@ import 'package:elbess_store/core/constants/colors.dart';
 import 'package:elbess_store/core/utils/size_config.dart';
 import 'package:elbess_store/features/Add/Widgets/add_section.dart';
 import 'package:elbess_store/features/Add/Widgets/add_text_field.dart';
+import 'package:elbess_store/features/Add/data/ProductModel.dart';
+import 'package:elbess_store/features/Add/data/Product_repo.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:image_picker/image_picker.dart';
 
 class Addbody extends StatefulWidget {
   const Addbody({super.key});
@@ -14,10 +17,284 @@ class Addbody extends StatefulWidget {
 }
 
 class _AddbodyState extends State<Addbody> {
-  String selectedCategory = 't-shirts';
-  final List<String> categories = ['t-shirts', 'hoodies', 'pants', 'cargos', 'jackets'];
-  final List<String> sizeLabels = ['S', 'M', 'L', 'Xl'];
+  late String selectedCategory;
+  late String selectedGender;
+ final List<String> categories = [
+  "T-SHIRTS",
+  "SHIRTS",
+  "POLO SHIRTS",
+  "TROUSERS",
+  "DENIM",
+  "SWEATERS | CARDIGANS",
+  "HOODIES | SWEATSHIRTS",
+  "SHOES | BAGS",
+];
+  final List<String> genders = ['men', 'women', 'unisex'];
+  final List<String> sizeLabels = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
   final Set<String> selectedSizes = {};
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  late final Map<String, TextEditingController> _sizeControllers;
+  final ImagePicker _picker = ImagePicker();
+  List<XFile> _selectedImages = [];
+  final ProductRepo _productRepo = ProductRepo();
+  ProductModel? _addedProduct;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedCategory = categories.first;
+    selectedGender = genders.first;
+    _sizeControllers = {
+      for (final size in sizeLabels) size: TextEditingController(),
+    };
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    for (final controller in _sizeControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final pickedImage = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedImage != null) {
+      setState(() {
+        _selectedImages = [pickedImage];
+      });
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _resetForm() {
+    _nameController.clear();
+    _priceController.clear();
+    for (final controller in _sizeControllers.values) {
+      controller.clear();
+    }
+    setState(() {
+      selectedSizes.clear();
+      _selectedImages.clear();
+      selectedCategory = categories.first;
+      selectedGender = genders.first;
+    });
+  }
+
+  Widget _buildSuccessPanel(double ds) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      width: double.infinity,
+      padding: EdgeInsets.all(ds * 1.6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFFE8F7EE),
+            const Color(0xFFDDF4E6),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(ds * 2),
+        border: Border.all(color: const Color(0xFFA9E1BE)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFB8E6C7).withOpacity(0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: ds * 4.6,
+                height: ds * 4.6,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.65),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_rounded,
+                  color: Colors.green.shade700,
+                  size: ds * 2.6,
+                ),
+              ),
+              Gap(ds),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Product published',
+                      style: TextStyle(
+                        fontFamily: 'semi',
+                        fontSize: ds * 1.55,
+                        color: Colors.green.shade900,
+                      ),
+                    ),
+                    Gap(ds * 0.2),
+                    Text(
+                      'Your product is now saved and ready for the store.',
+                      style: TextStyle(
+                        fontFamily: 'medium',
+                        fontSize: ds * 1.05,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Gap(ds * 1.3),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: ds * 1.2, vertical: ds),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.55),
+              borderRadius: BorderRadius.circular(ds * 1.2),
+            ),
+            child: Text(
+              'Last added: ${_addedProduct!.name}',
+              style: TextStyle(
+                fontFamily: 'semi',
+                fontSize: ds * 1.25,
+                color: const Color(0xFF1F5132),
+              ),
+            ),
+          ),
+          Gap(ds * 1.2),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _addedProduct = null;
+                    });
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.green.shade900,
+                    padding: EdgeInsets.symmetric(vertical: ds * 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(ds * 1.1),
+                    ),
+                    backgroundColor: Colors.white.withOpacity(0.45),
+                  ),
+                  child: const Text('Continue editing'),
+                ),
+              ),
+              Gap(ds),
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _addedProduct = null;
+                    });
+                    _resetForm();
+                  },
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text('Add another'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: ds * 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(ds * 1.1),
+                    ),
+                    backgroundColor: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+Future<void> addProduct() async {
+  final name = _nameController.text.trim();
+  final price = double.tryParse(_priceController.text.trim());
+
+  if (name.isEmpty) {
+    _showSnackBar('Product name is required');
+    return;
+  }
+
+  if (price == null || price <= 0) {
+    _showSnackBar('Please enter a valid price');
+    return;
+  }
+
+  final sizeQuantities = <SizeQuantityModel>[];
+  for (final size in selectedSizes) {
+    final qtyText = _sizeControllers[size]?.text.trim() ?? '';
+    final qty = int.tryParse(qtyText);
+    if (qty == null || qty <= 0) {
+      _showSnackBar('Enter a valid quantity for size $size');
+      return;
+    }
+    sizeQuantities.add(SizeQuantityModel(size: size, quantity: qty));
+  }
+
+  if (sizeQuantities.isEmpty) {
+    _showSnackBar('Select at least one size with quantity');
+    return;
+  }
+
+  final totalQuantity = sizeQuantities.fold<int>(0, (sum, item) => sum + item.quantity);
+
+  setState(() {
+    _isSaving = true;
+  });
+
+  try {
+    final added = await _productRepo.addProduct(
+      name: name,
+      price: price,
+      totalQuantity: totalQuantity,
+      category: selectedCategory,
+      gender: selectedGender,
+      sizeQuantities: sizeQuantities,
+      imagePath: _selectedImages.isNotEmpty ? _selectedImages.first.path : null,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _addedProduct = added;
+    });
+
+    _showSnackBar('Product posted successfully');
+    _resetForm();
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+    _showSnackBar(e.toString().replaceFirst('Exception: ', ''));
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -25,72 +302,109 @@ class _AddbodyState extends State<Addbody> {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: ds * 2, vertical: ds * 2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Gap(ds * 2),
-              Text(
-                "Post Product",
-                style: TextStyle(fontFamily: 'semi', fontSize: ds * 2.5),
-              ),
-              Gap(ds * 2),
+        backgroundColor: const Color(0xFFF4F6FA),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFFFFFF), Color(0xFFF4F6FA)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: ds * 2, vertical: ds * 2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Gap(ds * 1.5),
+                  Text(
+                    "Post Product",
+                    style: TextStyle(fontFamily: 'semi', fontSize: ds * 2.5),
+                  ),
+                  Gap(ds * 1.2),
 
-              // Product Images Section
-              AddSection(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text("product images", style: TextStyle(fontFamily: 'semi', fontSize: ds * 1.4)),
-                    Gap(ds * 1.5),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  if (_addedProduct != null) ...[
+                    _buildSuccessPanel(ds),
+                    Gap(ds * 1.8),
+                  ],
+
+
+                  AddSection(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Add image button
-                        Container(
-                          width: ds * 7,
-                          height: ds * 7,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F0ED),
-                            borderRadius: BorderRadius.circular(ds * 1.2),
+                        Text("product images", style: TextStyle(fontFamily: 'semi', fontSize: ds * 1.4)),
+                        if (_selectedImages.isNotEmpty) ...[
+                          Gap(ds * 0.6),
+                          Text(
+                            '${_selectedImages.length} image(s) selected',
+                            style: TextStyle(
+                              fontFamily: 'medium',
+                              fontSize: ds * 1.1,
+                              color: Colors.green.shade700,
+                            ),
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: ds * 3.2,
-                                height: ds * 3.2,
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: AppColors.primary, width: 1.5),
-                                  borderRadius: BorderRadius.circular(ds * 0.8),
-                                ),
-                                child: Icon(Icons.add, color: AppColors.primary, size: ds * 2),
-                              ),
-                              Gap(ds * 0.4),
-                              Text("add image", style: TextStyle(fontSize: ds * 0.9, fontFamily: 'medium', color: AppColors.primary)),
-                            ],
-                          ),
-                        ),
+                        ],
                         Gap(ds * 1.5),
-                        // Upload button
-                        Container(
-                          width: ds * 7,
-                          height: ds * 7,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF5F5F5),
-                            borderRadius: BorderRadius.circular(ds * 1.2),
-                          ),
-                          child: Icon(Icons.upload_outlined, color: Colors.grey.shade600, size: ds * 3),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: _pickImage,
+                              child: Container(
+                                width: ds * 7.2,
+                                height: ds * 7.2,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppColors.primary.withOpacity(0.12),
+                                      AppColors.primary.withOpacity(0.05),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(ds * 1.4),
+                                  border: Border.all(color: AppColors.primary.withOpacity(0.18)),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: ds * 3.4,
+                                      height: ds * 3.4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(ds * 0.9),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.primary.withOpacity(0.12),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(Icons.add_rounded, color: AppColors.primary, size: ds * 2.2),
+                                    ),
+                                    Gap(ds * 0.45),
+                                    Text(
+                                      "add image",
+                                      style: TextStyle(
+                                        fontSize: ds * 0.95,
+                                        fontFamily: 'semi',
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              Gap(ds * 2),
+                  ),
+                  Gap(ds * 2),
 
               // Product Name & Price Section
               AddSection(
@@ -101,25 +415,32 @@ class _AddbodyState extends State<Addbody> {
                     Gap(ds),
                     SizedBox(
                       width: double.infinity,
-                      child: AddTextField(hint: "eg,Black oversize hoddie"),
+                      child: AddTextField(
+                        hint: "eg,Black oversize hoddie",
+                        controller: _nameController,
+                      ),
                     ),
                     Gap(ds * 1.5),
                     Row(
                       children: [
                         Expanded(
-                          flex: 2,
+                          flex: 3,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text("price", style: TextStyle(fontFamily: 'semi', fontSize: ds * 1.4)),
                               Gap(ds * 0.8),
-                              AddTextField(hint: "eg,430.00"),
+                              AddTextField(
+                                hint: "eg,430.00",
+                                controller: _priceController,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              ),
                             ],
                           ),
                         ),
                         Gap(ds * 2),
                         Expanded(
-                          flex: 3,
+                          flex: 4,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -140,6 +461,28 @@ class _AddbodyState extends State<Addbody> {
                                     items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                                     onChanged: (val) {
                                       if (val != null) setState(() => selectedCategory = val);
+                                    },
+                                  ),
+                                ),
+                              ),
+                              Gap(ds),
+                              Text("Gender", style: TextStyle(fontFamily: 'semi', fontSize: ds * 1.2)),
+                              Gap(ds * 0.8),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: ds * 1.2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F5F5),
+                                  borderRadius: BorderRadius.circular(ds * 2),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: selectedGender,
+                                    isExpanded: true,
+                                    icon: Icon(Icons.keyboard_arrow_down, size: ds * 2),
+                                    style: TextStyle(fontFamily: 'medium', fontSize: ds * 1.3, color: Colors.black),
+                                    items: genders.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) setState(() => selectedGender = val);
                                     },
                                   ),
                                 ),
@@ -209,6 +552,7 @@ class _AddbodyState extends State<Addbody> {
                                   children: [
                                     Expanded(
                                       child: TextField(
+                                        controller: _sizeControllers[size],
                                         enabled: isSelected,
                                         decoration: InputDecoration(
                                           hintText: "available stock",
@@ -235,20 +579,39 @@ class _AddbodyState extends State<Addbody> {
               ),
               Gap(ds * 3),
 
-              // Save Button
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: ds * 3),
-                child: CustomButton(
-                  text: "Save&post product",
-                  onPressed: () {},
-                ),
+                  // Save Button
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: ds * 3),
+                    child: CustomButton(
+                      text: _isSaving ? "Posting..." : "Save&post product",
+                      onPressed: () {
+                        if (_isSaving) {
+                          return;
+                        }
+                        addProduct();
+                      },
+                    ),
+                  ),
+                  if (_addedProduct != null) ...[
+                    Gap(ds * 1.5),
+                    Center(
+                      child: Text(
+                        'Last added: ${_addedProduct!.name}',
+                        style: TextStyle(
+                          fontFamily: 'medium',
+                          fontSize: ds * 1.2,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                  Gap(ds * 3),
+                ],
               ),
-              Gap(ds * 3),
-            ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 

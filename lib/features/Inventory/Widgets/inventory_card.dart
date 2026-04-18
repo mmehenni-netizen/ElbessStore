@@ -42,12 +42,7 @@ class InventoryCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(ds),
             child: Container(
               color: Colors.grey[200],
-              child: Image.asset(
-                imagePath,
-                width: ds * 9,
-                height: ds * 9,
-                fit: BoxFit.cover,
-              ),
+              child: _buildImage(ds),
             ),
           ),
           Gap(ds * 1.2),
@@ -102,30 +97,29 @@ class InventoryCard extends StatelessWidget {
                   ],
                 ),
                 Gap(ds),
-                Row(
+                Wrap(
+                  spacing: ds * 0.6,
+                  runSpacing: ds * 0.6,
                   children: sizes.map((s) {
-                    return Padding(
-                      padding: EdgeInsets.only(right: ds * 0.6),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: ds * 1.2,
-                          vertical: ds * 0.5,
-                        ),
-                        decoration: BoxDecoration(
+                    return Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: ds * 1.2,
+                        vertical: ds * 0.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: s.quantity == 0
+                            ? const Color(0xFFFFDDD2)
+                            : const Color(0xFFFFF0E6),
+                        borderRadius: BorderRadius.circular(ds * 2),
+                      ),
+                      child: Text(
+                        '${s.label}:${s.quantity}',
+                        style: TextStyle(
+                          fontFamily: 'semi',
+                          fontSize: ds * 1.1,
                           color: s.quantity == 0
-                              ? const Color(0xFFFFDDD2)
-                              : const Color(0xFFFFF0E6),
-                          borderRadius: BorderRadius.circular(ds * 2),
-                        ),
-                        child: Text(
-                          '${s.label}:${s.quantity}',
-                          style: TextStyle(
-                            fontFamily: 'semi',
-                            fontSize: ds * 1.1,
-                            color: s.quantity == 0
-                                ? const Color(0xFFD94A2E)
-                                : const Color(0xFFD48A3C),
-                          ),
+                              ? const Color(0xFFD94A2E)
+                              : const Color(0xFFD48A3C),
                         ),
                       ),
                     );
@@ -136,6 +130,61 @@ class InventoryCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildImage(double ds) {
+    if (imagePath.trim().isEmpty) {
+      return Container(
+        width: ds * 8,
+        height: ds * 8,
+        color: Colors.grey[200],
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          color: Colors.grey.shade500,
+          size: ds * 2.4,
+        ),
+      );
+    }
+
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return Image.network(
+        imagePath,
+        width: ds * 8,
+        height: ds * 8,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: ds * 9,
+            height: ds * 9,
+            color: Colors.grey[200],
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: Colors.grey.shade500,
+              size: ds * 2.4,
+            ),
+          );
+        },
+      );
+    }
+
+    return Image.asset(
+      imagePath,
+      width: ds * 9,
+      height: ds * 9,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          width: ds * 9,
+          height: ds * 9,
+          color: Colors.grey[200],
+          child: Icon(
+            Icons.broken_image_outlined,
+            color: Colors.grey.shade500,
+            size: ds * 2.4,
+          ),
+        );
+      },
     );
   }
 }

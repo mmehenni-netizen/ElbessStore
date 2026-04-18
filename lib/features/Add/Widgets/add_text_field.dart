@@ -3,8 +3,17 @@ import 'package:flutter/material.dart';
 
 class AddTextField extends StatelessWidget {
   final String hint;
+  final TextEditingController? controller;
+  final TextInputType? keyboardType;
+  final bool enabled;
 
-  const AddTextField({super.key, required this.hint});
+  const AddTextField({
+    super.key,
+    required this.hint,
+    this.controller,
+    this.keyboardType,
+    this.enabled = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +25,9 @@ class AddTextField extends StatelessWidget {
         borderRadius: BorderRadius.circular(ds * 2),
       ),
       child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        enabled: enabled,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(fontFamily: 'medium', fontSize: ds * 1.2, color: Colors.grey),

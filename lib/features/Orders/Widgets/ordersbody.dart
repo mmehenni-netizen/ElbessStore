@@ -1,6 +1,9 @@
+import 'package:elbess_store/core/utils/pref_helpers%20.dart';
+import 'package:elbess_store/features/Orders/data/OrderModel.dart';
 import 'package:elbess_store/core/utils/size_config.dart';
 import 'package:elbess_store/features/Orders/Widgets/customordertype.dart';
 import 'package:elbess_store/features/Orders/Widgets/ordercard.dart';
+import 'package:elbess_store/features/Orders/data/orderRepo.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
@@ -14,6 +17,7 @@ class Ordersbody extends StatefulWidget {
 class _OrdersbodyState extends State<Ordersbody> {
   int selectedIndex = 0;
   final List<String> type = ["All", "confirmed", "prepared", "shipped", "delivered"];
+  final OrderRepo _orderRepo = OrderRepo();
   final List<Map<String, String>> _orders = [
     {
       "number": "110",
@@ -63,6 +67,12 @@ class _OrdersbodyState extends State<Ordersbody> {
     "shipped",
     "delivered",
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    getOrders();
+  }
 
   String _statusLabel(String value) {
     if (value.isEmpty) return value;
@@ -205,7 +215,42 @@ class _OrdersbodyState extends State<Ordersbody> {
       _orders[orderIndex]["status"] = selectedStatus;
     });
   }
+  Future<void> getOrders() async {
+    final id = await PrefHelpers.getStoreId();
+    if (id == null || id.trim().isEmpty) {
+      return;
+    }
 
+    try {
+      final res = await _orderRepo.getOrders(id.trim());
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _orders
+          ..clear()
+          ..addAll(res.map(_mapOrderToUi));
+      });
+    } catch (_) {}
+  }
+
+  Map<String, String> _mapOrderToUi(OrderModel order) {
+    final orderNumber = order.id.length >= 4
+        ? order.id.substring(order.id.length - 4).toUpperCase()
+        : order.id;
+
+    return {
+      "number": orderNumber,
+      "status": order.status,
+      "price": order.quantity > 0 ? '${order.quantity} item(s)' : '0 item',
+      "name": order.type.isNotEmpty ? order.type : 'Order',
+      "qty": '${order.quantity}x',
+      "customer": 'Customer',
+      "colors": order.products.isEmpty ? 'no color' : order.products.first.color,
+      "location": order.domicile ? 'home' : 'store',
+    };
+  }
   @override
   Widget build(BuildContext context) {
         SizeConfig().init(context);

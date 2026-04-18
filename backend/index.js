@@ -12,10 +12,15 @@ const Product  = require('./model/Product_model.js')
 const { sendVerificationEmail } = require('./utils/sendEmail.js'); 
 const { getAlreadyVerifiedPage, getSuccessPage, getErrorPage } = require('./templates/email-verification');
 
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Upload method
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/') 
+        cb(null, uploadsDir) 
     },
     filename: function (req, file, cb) {
         const ext = path.extname(file.originalname);
@@ -34,6 +39,7 @@ const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
+app.use('/uploads', express.static(uploadsDir));
 
 //url link
 const Urldb =process.env.MONGODB_URI;
@@ -49,30 +55,128 @@ mongoose.connect(Urldb)
 .catch(err => console.log(err))
 
 
+async function getStoreName({ id, address }) {
+    if (id) {
+        const storeById = await Store.findById(id).select('Name');
+        return storeById?.Name ?? null;
+    }
 
-
-app.post("/SignIn",(req,res)=>{
-    Store.findOne({
-        address: req.body.Address,
-        password: req.body.Password,
-}).then((result) => {
-        if (result) { 
-          res.json({
-                find: true,
-                result,
-            });
-        } else{
-            res.json({
-              find: false,
-            })
+    if (address) {
+        const normalizedAddress = address.trim().toLowerCase();
+        if (!normalizedAddress) {
+            return null;
         }
-})
+
+        const escapedAddress = normalizedAddress.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const storeByAddress = await Store.findOne({
+            Address: { $regex: `^\\s*${escapedAddress}\\s*$`, $options: 'i' },
+        }).select('Name');
+        return storeByAddress?.Name ?? null;
+    }
+
+    return null;
+}
+
+
+app.post('/GetStoreName', async (req, res) => {
+    try {
+        const id = req.body.Id ?? req.body.id;
+        const address = req.body.Address ?? req.body.address;
+
+        const name = await getStoreName({ id, address });
+
+        if (!name) {
+            return res.json({
+                success: false,
+                message: 'Store not found',
+            });
+        }
+
+        return res.json({
+            success: true,
+            name,
+        });
+    } catch (error) {
+        console.error('GetStoreName error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while getting store name',
+        });
+    }
+});
+
+
+
+
+app.post("/SignIn", async (req, res) => {
+    try {
+        const rawAddress = req.body.Address ?? req.body.address;
+        const rawPassword = req.body.Password ?? req.body.password;
+
+        const address = typeof rawAddress === 'string' ? rawAddress.trim() : '';
+        const password = typeof rawPassword === 'string' ? rawPassword : '';
+
+        if (!address || !password) {
+            return res.status(400).json({
+                find: false,
+                message: "Address and Password are required",
+            });
+        }
+
+        const escapedAddress = address.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const result = await Store.findOne({
+            Address: { $regex: `^\\s*${escapedAddress}\\s*$`, $options: 'i' },
+        });
+
+        if (!result) {
+            return res.json({
+                find: false,
+            });
+        }
+
+        const storedPassword = typeof result.Password === 'string' ? result.Password : '';
+        const inputPasswords = [password, password.trim()].filter((value, index, arr) => value && arr.indexOf(value) === index);
+
+        const isHashedPassword = storedPassword.startsWith('$2');
+        const passwordMatches = isHashedPassword
+            ? (await Promise.all(inputPasswords.map((candidate) => bcrypt.compare(candidate, storedPassword)))).some(Boolean)
+            : inputPasswords.some((candidate) => storedPassword === candidate || storedPassword.trim() === candidate.trim());
+
+        if (!passwordMatches) {
+            return res.json({
+                find: false,
+            });
+        }
+
+        res.json({
+            find: true,
+            result,
+        });
+    } catch (error) {
+        console.error('SignIn error:', error);
+        res.status(500).json({
+            find: false,
+            message: 'Server error during sign in',
+        });
+    }
 })
 
 app.post("/SignUp",upload.single('Logo'), async (req, res) => {
 
+    const rawAddress = req.body.Address ?? req.body.address;
+    const rawPassword = req.body.Password ?? req.body.password;
+    const address = typeof rawAddress === 'string' ? rawAddress.trim().toLowerCase() : '';
+    const password = typeof rawPassword === 'string' ? rawPassword.trim() : '';
+
+    if (!address || !password) {
+        return res.status(400).json({
+            creation: false,
+            message: "Address and Password are required",
+        });
+    }
+
     Store.findOne({
-        Address: req.body.Address,
+        Address: { $regex: `^\\s*${address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, $options: 'i' },
 }).then(async (result) => {
         if (result) { 
           res.json({
@@ -82,11 +186,11 @@ app.post("/SignUp",upload.single('Logo'), async (req, res) => {
         } else{
 
         const verificationToken = crypto.randomBytes(32).toString('hex');
-        const logoPath = req.file ? req.file.path : "/uploads/DefaultLogo.png";
+        const logoPath = req.file ? `/uploads/${req.file.filename}` : "/uploads/DefaultLogo.png";
         
         const newStore= new Store({
-      Address:req.body.Address,
-      Password:req.body.Password,
+            Address:address,
+            Password:password,
       EmailVerificationToken: verificationToken,
       Name: req.body.Name,      
       Location: req.body.Location, 
@@ -95,7 +199,7 @@ app.post("/SignUp",upload.single('Logo'), async (req, res) => {
     });
 
     newStore.save();
-    const emailSent = await sendVerificationEmail(req.body.Address, verificationToken);
+        const emailSent = await sendVerificationEmail(address, verificationToken);
     res.json({
       creation: true,
       message: "Store created successfully",
@@ -139,7 +243,7 @@ app.get("/verify-email", async (req, res) => {
 
 app.post("/AddProduct", upload.single('Image'), (req, res) => {
     
-    const imagePath = req.file ? req.file.path : "";
+    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
     let sizeQuantities = req.body.SizeQuantities;
     sizeQuantities = JSON.parse(sizeQuantities);
     
@@ -203,9 +307,16 @@ app.delete("/DeleteProduct", async (req, res) => {
         const deletedProduct = await Product.findByIdAndDelete(productId);
         
         if (product.ImageUrl) {
-            fs.unlink(product.ImageUrl, (err) => {
+            const storedPath = product.ImageUrl;
+            const imageFilePath = storedPath.startsWith('/uploads/')
+                ? path.join(uploadsDir, path.basename(storedPath))
+                : path.isAbsolute(storedPath)
+                    ? storedPath
+                    : path.join(__dirname, storedPath);
+
+            fs.unlink(imageFilePath, (err) => {
                 if (err) console.log("⚠️ Error deleting image:", err);
-                else console.log("✅ Image deleted:", product.ImageUrl);
+                else console.log("✅ Image deleted:", imageFilePath);
             });
         }
         

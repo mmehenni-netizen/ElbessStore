@@ -1,6 +1,7 @@
 const express = require('express')
 const path = require('path'); 
 const mongoose = require('mongoose')
+const dns = require('dns');
 const morgan = require('morgan')
 const crypto = require('crypto')
 const multer = require('multer'); 
@@ -113,19 +114,70 @@ app.use('/uploads', express.static(uploadsDir));
 
 //url link
 const Urldb =process.env.MONGODB_URI;
+const fallbackUrldb = process.env.MONGODB_URI_FALLBACK;
 
-//connect to database
-mongoose.connect(Urldb, {
+if (process.env.DNS_SERVERS) {
+    const dnsServers = process.env.DNS_SERVERS
+        .split(',')
+        .map((server) => server.trim())
+        .filter(Boolean);
+
+    if (dnsServers.length > 0) {
+        dns.setServers(dnsServers);
+        console.log('Using custom DNS servers:', dnsServers.join(', '));
+    }
+}
+
+const mongoConnectionOptions = {
     serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 30000,
-})
-.then(result => {
-    console.log('Connected to MongoDB');
-    app.listen(3000, () => {
-        console.log('Server is running on port 3000');
+};
+
+function isSrvDnsTimeout(error) {
+    return (
+        error &&
+        (error.code === 'ETIMEOUT' || error.code === 'ENOTFOUND') &&
+        error.syscall === 'queryTxt'
+    );
+}
+
+async function connectToMongoWithFallback() {
+    if (!Urldb) {
+        throw new Error('MONGODB_URI is missing in environment variables');
+    }
+
+    try {
+        await mongoose.connect(Urldb, mongoConnectionOptions);
+        console.log('Connected to MongoDB');
+        return;
+    } catch (error) {
+        if (!isSrvDnsTimeout(error)) {
+            throw error;
+        }
+
+        console.error('MongoDB SRV DNS lookup failed:', error.message);
+
+        if (!fallbackUrldb) {
+            console.error('Set MONGODB_URI_FALLBACK to a non-SRV mongodb:// URI from Atlas (with all hosts) to bypass SRV DNS lookups.');
+            throw error;
+        }
+
+        console.log('Retrying MongoDB connection using MONGODB_URI_FALLBACK...');
+        await mongoose.connect(fallbackUrldb, mongoConnectionOptions);
+        console.log('Connected to MongoDB using fallback URI');
+    }
+}
+
+//connect to database
+connectToMongoWithFallback()
+    .then(() => {
+        app.listen(3000, () => {
+            console.log('Server is running on port 3000');
+        });
+    })
+    .catch((err) => {
+        console.error('MongoDB connection error:', err);
     });
-})
-.catch(err => console.log(err))
 
 
 async function getStoreName({ id, address }) {

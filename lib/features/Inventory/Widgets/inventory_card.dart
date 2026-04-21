@@ -134,6 +134,8 @@ class InventoryCard extends StatelessWidget {
   }
 
   Widget _buildImage(double ds) {
+    final imageSize = (ds * 9).round();
+
     if (imagePath.trim().isEmpty) {
       return Container(
         width: ds * 8,
@@ -153,6 +155,8 @@ class InventoryCard extends StatelessWidget {
         width: ds * 8,
         height: ds * 8,
         fit: BoxFit.contain,
+        cacheWidth: imageSize,
+        cacheHeight: imageSize,
         errorBuilder: (context, error, stackTrace) {
           return Container(
             width: ds * 9,
@@ -173,6 +177,8 @@ class InventoryCard extends StatelessWidget {
       width: ds * 9,
       height: ds * 9,
       fit: BoxFit.contain,
+      cacheWidth: imageSize,
+      cacheHeight: imageSize,
       errorBuilder: (context, error, stackTrace) {
         return Container(
           width: ds * 9,

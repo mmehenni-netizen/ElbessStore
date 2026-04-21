@@ -1,11 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:elbess_store/core/constants/button.dart';
 import 'package:elbess_store/core/constants/colors.dart';
 import 'package:elbess_store/core/constants/textfield.dart';
 import 'package:elbess_store/core/utils/size_config.dart';
+import 'package:elbess_store/features/Auth/Presentation/Pages/email_verification_check.dart';
 import 'package:elbess_store/features/Auth/Presentation/Pages/login_view.dart';
 import 'package:elbess_store/features/Auth/data/auth_repo.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart' show Gap;
+import 'package:image_picker/image_picker.dart';
 
 class Signupbody extends StatefulWidget {
   const Signupbody({super.key});
@@ -22,7 +26,10 @@ class _SignupbodyState extends State<Signupbody> {
   final _nameController = TextEditingController();
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _imagePicker = ImagePicker();
   bool _isLoading = false;
+  String? _selectedLogoPath;
+  Uint8List? _selectedLogoBytes;
 
   @override
   void dispose() {
@@ -50,6 +57,7 @@ class _SignupbodyState extends State<Signupbody> {
         name: _nameController.text,
         location: _locationController.text,
         description: _descriptionController.text,
+        logoPath: _selectedLogoPath,
       );
 
       if (!mounted) {
@@ -59,7 +67,8 @@ class _SignupbodyState extends State<Signupbody> {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const LoginView(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              EmailVerificationCheck(email: _emailController.text),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
@@ -92,6 +101,44 @@ class _SignupbodyState extends State<Signupbody> {
       return '$label is required';
     }
     return null;
+  }
+
+  Future<void> _pickLogo() async {
+    try {
+      final file = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+
+      if (file == null) {
+        return;
+      }
+
+      final bytes = await file.readAsBytes();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _selectedLogoPath = file.path;
+        _selectedLogoBytes = bytes;
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not pick logo: $e')),
+      );
+    }
+  }
+
+  void _clearLogo() {
+    setState(() {
+      _selectedLogoPath = null;
+      _selectedLogoBytes = null;
+    });
   }
 
   @override
@@ -150,6 +197,44 @@ class _SignupbodyState extends State<Signupbody> {
                     ),
                   ),
                   Gap(sh * 0.03),
+                  Center(
+                    child: Column(
+                      children: [
+                        GestureDetector(
+                          onTap: _isLoading ? null : _pickLogo,
+                          child: CircleAvatar(
+                            radius: sw * 0.12,
+                            backgroundColor: const Color(0xFFF2EAE4),
+                            backgroundImage: _selectedLogoBytes != null
+                                ? MemoryImage(_selectedLogoBytes!)
+                                : null,
+                            child: _selectedLogoBytes == null
+                                ? Icon(
+                                    Icons.add_a_photo_outlined,
+                                    size: sw * 0.08,
+                                    color: AppColors.primary,
+                                  )
+                                : null,
+                          ),
+                        ),
+                        Gap(sh * 0.01),
+                        Text(
+                          'Store logo (optional)',
+                          style: TextStyle(
+                            color: Colors.black.withOpacity(0.7),
+                            fontSize: sw * 0.032,
+                            fontFamily: 'regular',
+                          ),
+                        ),
+                        if (_selectedLogoBytes != null)
+                          TextButton(
+                            onPressed: _isLoading ? null : _clearLogo,
+                            child: const Text('Remove logo'),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Gap(sh * 0.015),
                   CustomTextField(
                     title: 'Store name',
                     hinttext: 'Enter your store name',

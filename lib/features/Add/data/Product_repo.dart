@@ -9,6 +9,7 @@ class ProductRepo {
   final ApiService _apiService = ApiService();
   Future<ProductModel?> addProduct({
     required String name,
+    required String description,
     required double price,
     required int totalQuantity,
     required String category,
@@ -26,20 +27,21 @@ class ProductRepo {
       }
 
       final formData = FormData.fromMap({
-        'Name': name.trim(),
-        'Price': price.toString(),
-        'TotalQuantity': totalQuantity.toString(),
-        'Store': storeId.trim(),
-        'Category': category.trim(),
-        'Gender': gender.trim(),
-        'SizeQuantities': jsonEncode(
+        'name': name.trim(),
+        'description': description.trim(),
+        'price': price.toString(),
+        'totalQuantity': totalQuantity.toString(),
+        'store': storeId.trim(),
+        'category': category.trim(),
+        'gender': gender.trim(),
+        'sizeQuantities': jsonEncode(
           sizeQuantities.map((item) => item.toJson()).toList(),
         ),
 
         // Optional
-        if (rating != null) 'Rating': rating.toString(),
+        if (rating != null) 'rating': rating.toString(),
         if (totalRates != null) 'totalRates': totalRates.toString(),
-        if (imageUrl != null && imageUrl.trim().isNotEmpty) 'ImageUrl': imageUrl.trim(),
+        if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
         if (imagePath != null && imagePath.trim().isNotEmpty)
           'Image': await MultipartFile.fromFile(imagePath.trim()),
       });
@@ -66,7 +68,7 @@ class ProductRepo {
   }
   Future<List<ProductModel>> getInventory(String storeId) async {
     try {
-      final response = await _apiService.post('/GetStoreProducts', {'Id': storeId});
+      final response = await _apiService.post('/GetStoreProducts', {'storeId': storeId});
 
       if (response is! Map<String, dynamic>) {
         throw Exception('Unexpected server response');

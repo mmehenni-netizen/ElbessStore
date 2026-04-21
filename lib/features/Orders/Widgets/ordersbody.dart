@@ -18,48 +18,7 @@ class _OrdersbodyState extends State<Ordersbody> {
   int selectedIndex = 0;
   final List<String> type = ["All", "confirmed", "prepared", "shipped", "delivered"];
   final OrderRepo _orderRepo = OrderRepo();
-  final List<Map<String, String>> _orders = [
-    {
-      "number": "110",
-      "status": "confirmed",
-      "price": "420.00 dz",
-      "name": "oversized sweet-shirt",
-      "qty": "2x / L",
-      "customer": "Ahmed Ali",
-      "colors": "black-black",
-      "location": "relizene,hmadna / home",
-    },
-    {
-      "number": "111",
-      "status": "prepared",
-      "price": "540.00 dz",
-      "name": "denim baggy jeans",
-      "qty": "3x / M",
-      "customer": "Mohamed",
-      "colors": "no color",
-      "location": "relizene,hmadna / home",
-    },
-    {
-      "number": "112",
-      "status": "shipped",
-      "price": "540.00 dz",
-      "name": "oversized sweet-shirt",
-      "qty": "2x / L",
-      "customer": "Ahmed Ali",
-      "colors": "black-black",
-      "location": "relizene,hmadna / home",
-    },
-    {
-      "number": "113",
-      "status": "delivered",
-      "price": "540.00 dz",
-      "name": "oversized sweet-shirt",
-      "qty": "2x / L",
-      "customer": "Ahmed Ali",
-      "colors": "black-black",
-      "location": "relizene,hmadna / home",
-    },
-  ];
+  final List<Map<String, String>> _orders = [];
 
   final List<String> _statusOptions = [
     "confirmed",
@@ -239,16 +198,32 @@ class _OrdersbodyState extends State<Ordersbody> {
     final orderNumber = order.id.length >= 4
         ? order.id.substring(order.id.length - 4).toUpperCase()
         : order.id;
+    final deliveryType = order.domicile ? 'home' : 'store';
+    final address = order.location.trim();
+    final locationText = address.isEmpty ? deliveryType : '$address / $deliveryType';
+    final productName = order.type.trim().isNotEmpty
+        ? order.type.trim()
+      : (order.productName.trim().isNotEmpty)
+        ? order.productName.trim()
+        : (order.product?.trim().isNotEmpty == true ? order.product!.trim() : 'Order item');
+    final customerName = order.name.trim().isNotEmpty ? order.name.trim() : 'Customer';
+    final contactText = order.numero.trim().isNotEmpty ? '${order.numero} - $customerName' : customerName;
+    final effectivePrice = order.price > 0 ? order.price : order.productPrice * order.quantity;
+    final size = order.size.trim().isNotEmpty
+        ? order.size.trim()
+        : (order.products.isNotEmpty && order.products.first.size.trim().isNotEmpty
+            ? order.products.first.size.trim()
+            : '-');
 
     return {
       "number": orderNumber,
       "status": order.status,
-      "price": order.quantity > 0 ? '${order.quantity} item(s)' : '0 item',
-      "name": order.type.isNotEmpty ? order.type : 'Order',
-      "qty": '${order.quantity}x',
-      "customer": 'Customer',
+      "price": effectivePrice > 0 ? '${effectivePrice.toStringAsFixed(2)} dz' : '0 dz',
+      "name": productName,
+      "qty": '${order.quantity}x / $size',
+      "customer": contactText,
       "colors": order.products.isEmpty ? 'no color' : order.products.first.color,
-      "location": order.domicile ? 'home' : 'store',
+      "location": locationText,
     };
   }
   @override

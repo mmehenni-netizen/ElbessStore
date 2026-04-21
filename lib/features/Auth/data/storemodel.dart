@@ -38,25 +38,26 @@ class StoreModel {
 	});
 
 	factory StoreModel.fromJson(Map<String, dynamic> json) {
+		final dynamic rawProducts = json['products'] ?? json['Products'] ?? const [];
 		return StoreModel(
 			id: json['_id']?.toString(),
-			name: (json['Name'] ?? '') as String,
-			location: (json['Location'] ?? '') as String,
-			description: (json['Description'] ?? '') as String,
-			activeProducts: _asInt(json['ActiveProducts']),
-			totalRates: _asInt(json['totalRates']),
-			rating: _asDouble(json['Rating']),
-			revenus: _asInt(json['Revenus']),
-			shippingTime: _asInt(json['ShippingTime'], fallback: 3),
-			products: (json['products'] as List<dynamic>? ?? const [])
+			name: (_stringValue(json['name']) ?? _stringValue(json['Name']) ?? ''),
+			location: (_stringValue(json['location']) ?? _stringValue(json['Location']) ?? ''),
+			description: (_stringValue(json['description']) ?? _stringValue(json['Description']) ?? ''),
+			activeProducts: _asInt(json['activeProducts'] ?? json['ActiveProducts']),
+			totalRates: _asInt(json['totalRates'] ?? json['TotalRates']),
+			rating: _asDouble(json['rating'] ?? json['Rating']),
+			revenus: _asInt(json['revenus'] ?? json['Revenus']),
+			shippingTime: _asInt(json['shippingTime'] ?? json['ShippingTime'], fallback: 3),
+			products: (rawProducts as List<dynamic>? ?? const [])
 					.map((item) => item.toString())
 					.toList(),
-			totalOrders: _asInt(json['TotalOrders']),
-			address: (json['Address'] ?? '') as String,
-			password: (json['Password'] ?? '') as String,
-			isEmailVerified: json['isEmailVerified'] == true,
-			emailVerificationToken: json['EmailVerificationToken']?.toString(),
-			logo: (json['Logo'] ?? '') as String,
+			totalOrders: _asInt(json['totalOrders'] ?? json['TotalOrders']),
+			address: (_stringValue(json['address']) ?? _stringValue(json['Address']) ?? ''),
+			password: (_stringValue(json['password']) ?? _stringValue(json['Password']) ?? ''),
+			isEmailVerified: json['isEmailVerified'] == true || json['IsEmailVerified'] == true,
+			emailVerificationToken: _stringValue(json['emailVerificationToken']) ?? _stringValue(json['EmailVerificationToken']),
+			logo: (_stringValue(json['logo']) ?? _stringValue(json['Logo']) ?? ''),
 			version: json['__v'] is int ? json['__v'] as int : null,
 		);
 	}
@@ -64,21 +65,21 @@ class StoreModel {
 	Map<String, dynamic> toJson() {
 		return {
 			if (id != null) '_id': id,
-			'Name': name,
-			'Location': location,
-			'Description': description,
-			'ActiveProducts': activeProducts,
+			'name': name,
+			'location': location,
+			'description': description,
+			'activeProducts': activeProducts,
 			'totalRates': totalRates,
-			'Rating': rating,
-			'Revenus': revenus,
-			'ShippingTime': shippingTime,
+			'rating': rating,
+			'revenus': revenus,
+			'shippingTime': shippingTime,
 			'products': products,
-			'TotalOrders': totalOrders,
-			'Address': address,
-			'Password': password,
+			'totalOrders': totalOrders,
+			'address': address,
+			'password': password,
 			'isEmailVerified': isEmailVerified,
-			'EmailVerificationToken': emailVerificationToken,
-			'Logo': logo,
+			'emailVerificationToken': emailVerificationToken,
+			'logo': logo,
 			if (version != null) '__v': version,
 		};
 	}
@@ -88,6 +89,12 @@ class StoreModel {
 		if (value is num) return value.toInt();
 		if (value is String) return int.tryParse(value) ?? fallback;
 		return fallback;
+	}
+
+	static String? _stringValue(dynamic value) {
+		if (value == null) return null;
+		final text = value.toString().trim();
+		return text.isEmpty ? null : text;
 	}
 
 	static double _asDouble(dynamic value, {double fallback = 0}) {

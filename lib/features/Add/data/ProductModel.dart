@@ -11,15 +11,15 @@ class SizeQuantityModel {
 
 	factory SizeQuantityModel.fromJson(Map<String, dynamic> json) {
 		return SizeQuantityModel(
-			size: (json['Size'] ?? '') as String,
-			quantity: _asInt(json['Quantity']),
+			size: (json['size'] ?? json['Size'] ?? '') as String,
+			quantity: _asInt(json['quantity'] ?? json['Quantity']),
 		);
 	}
 
 	Map<String, dynamic> toJson() {
 		return {
-			'Size': size,
-			'Quantity': quantity,
+			'size': size,
+			'quantity': quantity,
 		};
 	}
 
@@ -40,12 +40,20 @@ class ProductModel {
 	final int totalQuantity;
 	final List<SizeQuantityModel> sizeQuantities;
 	final String? store;
-	final String imageUrl;
+	final List<String> imageUrls;
 	final String category;
 	final String gender;
 	final int? version;
 
+	String get firstImageUrl {
+		if (imageUrls.isEmpty) {
+			return '';
+		}
+		return imageUrls.first;
+	}
+
 	String get fullImageUrl {
+		final imageUrl = firstImageUrl;
 		if (imageUrl.trim().isEmpty) {
 			return '';
 		}
@@ -66,28 +74,40 @@ class ProductModel {
 		required this.totalQuantity,
 		required this.sizeQuantities,
 		this.store,
-		required this.imageUrl,
+		required this.imageUrls,
 		required this.category,
 		required this.gender,
 		this.version,
 	});
 
 	factory ProductModel.fromJson(Map<String, dynamic> json) {
+		// Handle imageUrl as either array or string (for backward compatibility)
+		List<String> urls = [];
+		final imageUrlData = json['imageUrl'] ?? json['ImageUrl'];
+		if (imageUrlData is List) {
+			urls = imageUrlData
+				.map((item) => item?.toString() ?? '')
+				.where((item) => item.isNotEmpty)
+				.toList();
+		} else if (imageUrlData is String && imageUrlData.isNotEmpty) {
+			urls = [imageUrlData];
+		}
+
 		return ProductModel(
 			id: json['_id']?.toString(),
-			name: (json['Name'] ?? '') as String,
-			price: _asDouble(json['Price']),
-			rating: _asDouble(json['Rating']),
+			name: (json['name'] ?? json['Name'] ?? '') as String,
+			price: _asDouble(json['price'] ?? json['Price']),
+			rating: _asDouble(json['rating'] ?? json['Rating']),
 			totalRates: _asInt(json['totalRates']),
-			totalQuantity: _asInt(json['TotalQuantity']),
-			sizeQuantities: (json['SizeQuantities'] as List<dynamic>? ?? const [])
+			totalQuantity: _asInt(json['totalQuantity'] ?? json['TotalQuantity']),
+			sizeQuantities: ((json['sizeQuantities'] ?? json['SizeQuantities']) as List<dynamic>? ?? const [])
 					.whereType<Map<String, dynamic>>()
 					.map(SizeQuantityModel.fromJson)
 					.toList(),
-			store: json['Store']?.toString(),
-			imageUrl: (json['ImageUrl'] ?? '') as String,
-			category: (json['Category'] ?? '') as String,
-			gender: (json['Gender'] ?? '') as String,
+			store: (json['store'] ?? json['Store'])?.toString(),
+			imageUrls: urls,
+			category: (json['category'] ?? json['Category'] ?? '') as String,
+			gender: (json['gender'] ?? json['Gender'] ?? '') as String,
 			version: json['__v'] is int ? json['__v'] as int : null,
 		);
 	}
@@ -95,16 +115,16 @@ class ProductModel {
 	Map<String, dynamic> toJson() {
 		return {
 			if (id != null) '_id': id,
-			'Name': name,
-			'Price': price,
-			'Rating': rating,
+			'name': name,
+			'price': price,
+			'rating': rating,
 			'totalRates': totalRates,
-			'TotalQuantity': totalQuantity,
-			'SizeQuantities': sizeQuantities.map((item) => item.toJson()).toList(),
-			'Store': store,
-			'ImageUrl': imageUrl,
-			'Category': category,
-			'Gender': gender,
+			'totalQuantity': totalQuantity,
+			'sizeQuantities': sizeQuantities.map((item) => item.toJson()).toList(),
+			'store': store,
+			'imageUrl': imageUrls,
+			'category': category,
+			'gender': gender,
 			if (version != null) '__v': version,
 		};
 	}

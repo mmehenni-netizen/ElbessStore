@@ -33,6 +33,7 @@ class _AddbodyState extends State<Addbody> {
   final List<String> sizeLabels = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
   final Set<String> selectedSizes = {};
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   late final Map<String, TextEditingController> _sizeControllers;
   final ImagePicker _picker = ImagePicker();
@@ -54,6 +55,7 @@ class _AddbodyState extends State<Addbody> {
   @override
   void dispose() {
     _nameController.dispose();
+    _descriptionController.dispose();
     _priceController.dispose();
     for (final controller in _sizeControllers.values) {
       controller.dispose();
@@ -78,6 +80,7 @@ class _AddbodyState extends State<Addbody> {
 
   void _resetForm() {
     _nameController.clear();
+    _descriptionController.clear();
     _priceController.clear();
     for (final controller in _sizeControllers.values) {
       controller.clear();
@@ -227,10 +230,16 @@ class _AddbodyState extends State<Addbody> {
 
 Future<void> addProduct() async {
   final name = _nameController.text.trim();
+  final description = _descriptionController.text.trim();
   final price = double.tryParse(_priceController.text.trim());
 
   if (name.isEmpty) {
     _showSnackBar('Product name is required');
+    return;
+  }
+
+  if (description.isEmpty) {
+    _showSnackBar('Product description is required');
     return;
   }
 
@@ -264,6 +273,7 @@ Future<void> addProduct() async {
   try {
     final added = await _productRepo.addProduct(
       name: name,
+      description: description,
       price: price,
       totalQuantity: totalQuantity,
       category: selectedCategory,
@@ -418,6 +428,33 @@ Future<void> addProduct() async {
                       child: AddTextField(
                         hint: "eg,Black oversize hoddie",
                         controller: _nameController,
+                      ),
+                    ),
+                    Gap(ds * 1.2),
+                    Text("description", style: TextStyle(fontFamily: 'semi', fontSize: ds * 1.4)),
+                    Gap(ds * 0.8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: ds * 1.2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(ds * 1.2),
+                        ),
+                        child: TextField(
+                          controller: _descriptionController,
+                          minLines: 3,
+                          maxLines: 5,
+                          decoration: InputDecoration(
+                            hintText: "write product description",
+                            hintStyle: TextStyle(fontFamily: 'medium', fontSize: ds * 1.2, color: Colors.grey),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: ds),
+                          ),
+                          style: TextStyle(fontFamily: 'medium', fontSize: ds * 1.2, color: Colors.black),
+                          textInputAction: TextInputAction.newline,
+                        ),
                       ),
                     ),
                     Gap(ds * 1.5),

@@ -6,36 +6,106 @@ const crypto = require('crypto')
 const multer = require('multer'); 
 const bcrypt = require('bcrypt')
 const fs = require('fs');
+require('dotenv').config();
+const cloudinary = require('cloudinary').v2;
 const Order = require('./model/Order_model.js')
 const Store  = require('./model/Store_model.js')
 const Product  = require('./model/Product_model.js')
 const { sendVerificationEmail } = require('./utils/sendEmail.js'); 
 const { getAlreadyVerifiedPage, getSuccessPage, getErrorPage } = require('./templates/email-verification');
 
+const isCloudinaryConfigured = Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+);
+
+if (isCloudinaryConfigured) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true,
+    });
+} else {
+    console.warn('Cloudinary is not configured. Image uploads require CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.');
+}
+
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Upload method
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir) 
-    },
-    filename: function (req, file, cb) {
-        const ext = path.extname(file.originalname);
-        const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + ext;
-        cb(null, uniqueName);
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+function uploadBufferToCloudinary(file, folder) {
+    return new Promise((resolve, reject) => {
+        if (!file || !file.buffer) {
+            resolve(null);
+            return;
+        }
+
+        if (!isCloudinaryConfigured) {
+            reject(new Error('Cloudinary is not configured on the server'));
+            return;
+        }
+
+        try {
+            const stream = cloudinary.uploader.upload_stream(
+                {
+                    folder,
+                    resource_type: 'image',
+                },
+                (error, result) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+
+                    resolve(result);
+                }
+            );
+
+            stream.end(file.buffer);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+function getCloudinaryPublicId(imageUrl) {
+    if (typeof imageUrl !== 'string' || !imageUrl.includes('/upload/')) {
+        return null;
     }
-});
 
-const upload = multer({ storage: storage });
+    const uploadSegment = imageUrl.split('/upload/')[1];
+    if (!uploadSegment) {
+        return null;
+    }
+
+    const pathWithoutQuery = uploadSegment.split('?')[0];
+    const withoutVersion = pathWithoutQuery.replace(/^v\d+\//, '');
+    const withoutExtension = withoutVersion.replace(/\.[^.\/]+$/, '');
+
+    return withoutExtension || null;
+}
+
+async function deleteCloudinaryImage(imageUrl) {
+    const publicId = getCloudinaryPublicId(imageUrl);
+    if (!publicId) {
+        return false;
+    }
+
+    await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+    return true;
+}
 
 
-//initialize app
+
 const app = express()
 
-//middleware
+
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
@@ -45,7 +115,10 @@ app.use('/uploads', express.static(uploadsDir));
 const Urldb =process.env.MONGODB_URI;
 
 //connect to database
-mongoose.connect(Urldb)
+mongoose.connect(Urldb, {
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 30000,
+})
 .then(result => {
     console.log('Connected to MongoDB');
     app.listen(3000, () => {
@@ -57,8 +130,8 @@ mongoose.connect(Urldb)
 
 async function getStoreName({ id, address }) {
     if (id) {
-        const storeById = await Store.findById(id).select('Name');
-        return storeById?.Name ?? null;
+        const storeById = await Store.findById(id).lean();
+        return storeById?.name ?? null;
     }
 
     if (address) {
@@ -69,9 +142,9 @@ async function getStoreName({ id, address }) {
 
         const escapedAddress = normalizedAddress.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const storeByAddress = await Store.findOne({
-            Address: { $regex: `^\\s*${escapedAddress}\\s*$`, $options: 'i' },
-        }).select('Name');
-        return storeByAddress?.Name ?? null;
+            address: { $regex: `^\\s*${escapedAddress}\\s*$`, $options: 'i' },
+        }).lean();
+        return storeByAddress?.name ?? null;
     }
 
     return null;
@@ -113,7 +186,7 @@ app.post("/SignIn", async (req, res) => {
         const rawAddress = req.body.Address ?? req.body.address;
         const rawPassword = req.body.Password ?? req.body.password;
 
-        const address = typeof rawAddress === 'string' ? rawAddress.trim() : '';
+        const address = typeof rawAddress === 'string' ? rawAddress.trim().toLowerCase() : '';
         const password = typeof rawPassword === 'string' ? rawPassword : '';
 
         if (!address || !password) {
@@ -123,18 +196,35 @@ app.post("/SignIn", async (req, res) => {
             });
         }
 
-        const escapedAddress = address.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const result = await Store.findOne({
-            Address: { $regex: `^\\s*${escapedAddress}\\s*$`, $options: 'i' },
-        });
+        // Try direct match first (case-insensitive)
+        let result = await Store.findOne({
+            address: address
+        }).lean();
+
+        // If not found, try with regex pattern
+        if (!result) {
+            const escapedAddress = address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            result = await Store.findOne({
+                $or: [
+                    { address: { $regex: `^${escapedAddress}$`, $options: 'i' } },
+                    { Address: { $regex: `^${escapedAddress}$`, $options: 'i' } },
+                ],
+            }).lean();
+        }
 
         if (!result) {
+            console.log(`[SignIn] Store not found for address: ${address}`);
             return res.json({
                 find: false,
+                message: "Store not found",
             });
         }
 
-        const storedPassword = typeof result.Password === 'string' ? result.Password : '';
+        const storedPassword = typeof result.password === 'string'
+            ? result.password
+            : typeof result.Password === 'string'
+                ? result.Password
+                : '';
         const inputPasswords = [password, password.trim()].filter((value, index, arr) => value && arr.indexOf(value) === index);
 
         const isHashedPassword = storedPassword.startsWith('$2');
@@ -143,8 +233,10 @@ app.post("/SignIn", async (req, res) => {
             : inputPasswords.some((candidate) => storedPassword === candidate || storedPassword.trim() === candidate.trim());
 
         if (!passwordMatches) {
+            console.log(`[SignIn] Password mismatch for address: ${address}`);
             return res.json({
                 find: false,
+                message: "Invalid password",
             });
         }
 
@@ -161,52 +253,61 @@ app.post("/SignIn", async (req, res) => {
     }
 })
 
-app.post("/SignUp",upload.single('Logo'), async (req, res) => {
+app.post("/SignUp", upload.single('Logo'), async (req, res) => {
 
-    const rawAddress = req.body.Address ?? req.body.address;
-    const rawPassword = req.body.Password ?? req.body.password;
-    const address = typeof rawAddress === 'string' ? rawAddress.trim().toLowerCase() : '';
-    const password = typeof rawPassword === 'string' ? rawPassword.trim() : '';
+    try {
+        const rawAddress = req.body.Address ?? req.body.address;
+        const rawPassword = req.body.Password ?? req.body.password;
+        const address = typeof rawAddress === 'string' ? rawAddress.trim().toLowerCase() : '';
+        const password = typeof rawPassword === 'string' ? rawPassword.trim() : '';
 
-    if (!address || !password) {
-        return res.status(400).json({
-            creation: false,
-            message: "Address and Password are required",
+        if (!address || !password) {
+            return res.status(400).json({
+                creation: false,
+                message: "Address and Password are required",
+            });
+        }
+
+        const result = await Store.findOne({
+            address: { $regex: `^\\s*${address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, $options: 'i' },
         });
-    }
 
-    Store.findOne({
-        Address: { $regex: `^\\s*${address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, $options: 'i' },
-}).then(async (result) => {
-        if (result) { 
-          res.json({
+        if (result) {
+            return res.json({
                 creation: false,
                 message: "Store already exists",
             });
-        } else{
+        }
 
         const verificationToken = crypto.randomBytes(32).toString('hex');
-        const logoPath = req.file ? `/uploads/${req.file.filename}` : "/uploads/DefaultLogo.png";
-        
-        const newStore= new Store({
-            Address:address,
-            Password:password,
-      EmailVerificationToken: verificationToken,
-      Name: req.body.Name,      
-      Location: req.body.Location, 
-      Description: req.body.Description ,
-      Logo: logoPath 
-    });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const uploadedLogo = await uploadBufferToCloudinary(req.file, 'elbess-store/logos');
+        const logoPath = uploadedLogo?.secure_url || process.env.DEFAULT_LOGO_URL || '';
 
-    newStore.save();
-        const emailSent = await sendVerificationEmail(address, verificationToken);
-    res.json({
-      creation: true,
-      message: "Store created successfully",
-    });
-        }
-  
-})
+        const newStore = new Store({
+            address: address,
+            password: hashedPassword,
+            emailVerificationToken: verificationToken,
+            name: req.body.Name ?? req.body.name,
+            location: req.body.Location ?? req.body.location,
+            description: req.body.Description ?? req.body.description,
+            logo: logoPath,
+        });
+
+        await newStore.save();
+        await sendVerificationEmail(address, verificationToken);
+
+        return res.json({
+            creation: true,
+            message: "Store created successfully",
+        });
+    } catch (error) {
+        console.error('SignUp error:', error);
+        return res.status(500).json({
+            creation: false,
+            message: error?.message || 'Server error during sign up',
+        });
+    }
 })
 
 
@@ -219,74 +320,148 @@ app.get("/verify-email", async (req, res) => {
             return res.send(getErrorPage("Verification token is required"));
         }
 
-        const store = await Store.findOne({ 
-            EmailVerificationToken: token
-        });
+        const store = await Store.findOne({ emailVerificationToken: token }).lean();
 
         if (!store) {
             return res.send(getErrorPage("Invalid or expired verification token"));
         }
 
         if (store.isEmailVerified) {
-            return res.send(getAlreadyVerifiedPage(store.Address));
+            return res.send(getAlreadyVerifiedPage(store.address));
         }
 
-        store.isEmailVerified = true;        
-        await store.save();
+        await Store.updateOne(
+            { _id: store._id },
+            { $set: { isEmailVerified: true } }
+        );
 
-        res.send(getSuccessPage(store.Address));
+        res.send(getSuccessPage(store.address));
 
     } catch (error) {
         res.send(getErrorPage("Server error. Please try again later"));
     }
 });
 
-app.post("/AddProduct", upload.single('Image'), (req, res) => {
-    
-    const imagePath = req.file ? `/uploads/${req.file.filename}` : "";
-    let sizeQuantities = req.body.SizeQuantities;
-    sizeQuantities = JSON.parse(sizeQuantities);
-    
-    const newProduct = new Product({
-        Name: req.body.Name,
-        Price: req.body.Price,
-        Rating: req.body.Rating,
-        SizeQuantities: sizeQuantities, 
-        Store: req.body.Store,
-        Category:req.body.Category,
-        ImageUrl: imagePath,
-        TotalQuantity:req.body.TotalQuantity,
-        Gender:req.body.Gender,
-    });
+app.post("/CheckEmailVerification", async (req, res) => {
+    try {
+        const rawEmail = req.body.email ?? req.body.Email;
+        const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
 
-    newProduct.save()
-        .then(savedProduct => {
-            return Store.findByIdAndUpdate(
-                req.body.Store,  
-                { $push: { products: savedProduct._id } }
-            );
-        })
-        .then(updatedStore => {
-            res.json({
-                creation: true,
-                message: "Product created successfully and added to store"
+        if (!email) {
+            return res.status(400).json({
+                isVerified: false,
+                message: "Email is required",
             });
-            console.log("Product Added to DB and linked to Store");
-        })
-        .catch(err => {
-            console.log(err);
-            res.status(500).json({
-                creation: false,
-                message: "Error creating product",
-                error: err.message
+        }
+
+        console.log(`[CheckEmailVerification] Looking for store with email: ${email}`);
+
+        const store = await Store.findOne({
+            address: email,
+        }).lean();
+
+        if (!store) {
+            console.log(`[CheckEmailVerification] Store not found for email: ${email}`);
+            return res.json({
+                isVerified: false,
+                message: "Store not found",
             });
+        }
+
+        console.log(`[CheckEmailVerification] Found store, isEmailVerified: ${store.isEmailVerified}`);
+
+        const isVerified = store.isEmailVerified === true;
+
+        return res.json({
+            isVerified: isVerified,
         });
+    } catch (error) {
+        console.error('CheckEmailVerification error:', error);
+        return res.status(500).json({
+            isVerified: false,
+            message: 'Server error',
+        });
+    }
+});
+
+app.post("/AddProduct", upload.single('Image'), async (req, res) => {
+
+    try {
+        const name = (req.body.Name ?? req.body.name ?? '').trim();
+        const description = (req.body.Description ?? req.body.description ?? name).trim();
+        const storeId = req.body.Store ?? req.body.store;
+        const category = req.body.Category ?? req.body.category;
+        const gender = req.body.Gender ?? req.body.gender;
+        const price = Number(req.body.Price ?? req.body.price ?? 0);
+        const rating = Number(req.body.Rating ?? req.body.rating ?? 0);
+        const totalQuantity = Number(req.body.TotalQuantity ?? req.body.totalQuantity ?? 0);
+
+        if (!name || !description || !storeId || !category || !gender || !Number.isFinite(price) || !Number.isFinite(totalQuantity)) {
+            return res.status(400).json({
+                creation: false,
+                message: "Missing or invalid product fields",
+            });
+        }
+
+        const uploadedImage = await uploadBufferToCloudinary(req.file, 'elbess-store/products');
+        const imagePath = uploadedImage?.secure_url || "";
+        let sizeQuantities = req.body.SizeQuantities ?? req.body.sizeQuantities ?? '[]';
+        sizeQuantities = typeof sizeQuantities === 'string' ? JSON.parse(sizeQuantities) : sizeQuantities;
+
+        const normalizedSizeQuantities = Array.isArray(sizeQuantities)
+            ? sizeQuantities
+                  .map((item) => ({
+                      size: (item?.size ?? item?.Size ?? '').toString().trim(),
+                      quantity: Number(item?.quantity ?? item?.Quantity ?? 0),
+                  }))
+                  .filter((item) => item.size && Number.isFinite(item.quantity))
+            : [];
+
+        if (normalizedSizeQuantities.length === 0) {
+            return res.status(400).json({
+                creation: false,
+                message: "At least one valid size quantity is required",
+            });
+        }
+
+        const newProduct = new Product({
+            name,
+            description,
+            price,
+            rating: Number.isFinite(rating) ? rating : 0,
+            sizeQuantities: normalizedSizeQuantities,
+            store: storeId,
+            category,
+            imageUrl: imagePath ? [imagePath] : [],
+            totalQuantity,
+            gender,
+        });
+
+        const savedProduct = await newProduct.save();
+        await Store.findByIdAndUpdate(
+            storeId,
+            { $push: { products: savedProduct._id } }
+        );
+
+        return res.json({
+            creation: true,
+            result: savedProduct,
+            message: "Product created successfully and added to store"
+        });
+    } catch (err) {
+        console.log(err);
+        return res.status(500).json({
+            creation: false,
+            message: "Error creating product",
+            error: err.message
+        });
+    }
 });
 
 
 app.delete("/DeleteProduct", async (req, res) => {
     try {
-        const productId = req.body.Id;
+        const productId = req.body.id ?? req.body.Id;
         const product = await Product.findById(productId);
         
         if (!product) {
@@ -296,7 +471,7 @@ app.delete("/DeleteProduct", async (req, res) => {
             });
         }
         
-        const storeId = product.Store;     
+        const storeId = product.store;
 
         const updatedStore = await Store.findByIdAndUpdate(
             storeId,
@@ -306,18 +481,35 @@ app.delete("/DeleteProduct", async (req, res) => {
         
         const deletedProduct = await Product.findByIdAndDelete(productId);
         
-        if (product.ImageUrl) {
-            const storedPath = product.ImageUrl;
-            const imageFilePath = storedPath.startsWith('/uploads/')
-                ? path.join(uploadsDir, path.basename(storedPath))
-                : path.isAbsolute(storedPath)
-                    ? storedPath
-                    : path.join(__dirname, storedPath);
+        if (product.imageUrl && Array.isArray(product.imageUrl)) {
+            await Promise.all(product.imageUrl.map(async (storedPath) => {
+                if (!storedPath) {
+                    return;
+                }
 
-            fs.unlink(imageFilePath, (err) => {
-                if (err) console.log("⚠️ Error deleting image:", err);
-                else console.log("✅ Image deleted:", imageFilePath);
-            });
+                if (typeof storedPath === 'string' && storedPath.startsWith('http')) {
+                    try {
+                        const deleted = await deleteCloudinaryImage(storedPath);
+                        if (deleted) {
+                            console.log('✅ Cloudinary image deleted:', storedPath);
+                            return;
+                        }
+                    } catch (deleteError) {
+                        console.log('⚠️ Error deleting Cloudinary image:', deleteError);
+                    }
+                }
+
+                const imageFilePath = storedPath.startsWith('/uploads/')
+                    ? path.join(uploadsDir, path.basename(storedPath))
+                    : path.isAbsolute(storedPath)
+                        ? storedPath
+                        : path.join(__dirname, storedPath);
+
+                fs.unlink(imageFilePath, (err) => {
+                    if (err) console.log("⚠️ Error deleting image:", err);
+                    else console.log("✅ Image deleted:", imageFilePath);
+                });
+            }));
         }
         
         res.json({
@@ -337,12 +529,20 @@ app.delete("/DeleteProduct", async (req, res) => {
 
 app.post("/GetStoreProducts", async (req, res) => {
     try {
-        const products = await Product.find({ Store: req.body.Id});
-        
+        const storeId = req.body.storeId ?? req.body.StoreId ?? req.body.store ?? req.body.Store ?? req.body.id ?? req.body.Id;
+        if (!storeId) {
+            return res.status(400).json({
+                success: false,
+                message: "Store id is required",
+            });
+        }
+
+        const products = await Product.find({ store: storeId });
+
         res.json({
             success: true,
             count: products.length,
-            products: products
+            products,
         });
 
     } catch (error) {
@@ -353,43 +553,91 @@ app.post("/GetStoreProducts", async (req, res) => {
             error: error.message
         });
     }
-},
- app.post("/AddOrder", async (req, res) => {
-  try {
-    const { store, type, products } = req.body
- 
-    if (!products || products.length === 0) {
-      return res.status(400).json({ message: 'Order must have at least one product.' })
-    }
+});
 
-     const totalPrice = products.reduce((sum, item) => {
-      return sum + item.price * item.quantity
-    }, 0)
- 
-    const order = new Order({
-      store,
-      user: req.user._id,   
-      type: type || 'At Home',
-      products,
-      totalPrice,
-      status: 'prepared',
-    })
- 
-    const saved = await order.save()
- 
-    res.status(201).json({
-      message: 'Order created successfully.',
-      order: saved,
-    })
-  } catch (err) {
-    res.status(500).json({ message: err.message })
-  }
-}
-))
+app.post("/AddOrder", async (req, res) => {
+    try {
+        const {
+            store,
+            user,
+            product,
+            quantity,
+            size,
+            Size,
+            name,
+            Name,
+            location,
+            Location,
+            numero,
+            Numero,
+            office,
+            domicile,
+            products,
+        } = req.body;
+
+        const firstProduct = Array.isArray(products) && products.length > 0 ? products[0] : null;
+        const productId = product ?? firstProduct?.product;
+        const normalizedQuantity = Number(quantity ?? firstProduct?.quantity ?? 1);
+        const normalizedSize = (size ?? Size ?? firstProduct?.size ?? '').toString().trim();
+        const normalizedName = (name ?? Name ?? '').toString().trim();
+        const normalizedLocation = (location ?? Location ?? '').toString().trim();
+        const normalizedNumero = (numero ?? Numero ?? '').toString().trim();
+        const productDoc = await Product.findById(productId).select('price');
+        const productPrice = Number(productDoc?.price ?? firstProduct?.price ?? 0);
+        const normalizedPrice = Number.isFinite(productPrice) ? productPrice * normalizedQuantity : 0;
+        const isOffice = Boolean(office ?? false);
+        const isDomicile = Boolean(domicile ?? !isOffice);
+
+        if (!store || !user || !productId || !Number.isFinite(normalizedQuantity) || normalizedQuantity <= 0 || !normalizedSize) {
+            return res.status(400).json({
+                success: false,
+                message: 'store, user, product, quantity, and size are required',
+            });
+        }
+
+        const order = new Order({
+            store,
+            user,
+            product: productId,
+            quantity: normalizedQuantity,
+            price: normalizedPrice,
+            size: normalizedSize,
+            name: normalizedName,
+            location: normalizedLocation,
+            numero: normalizedNumero,
+            office: isOffice,
+            domicile: isDomicile,
+            prepared: true,
+            preparationDate: new Date(),
+        });
+
+        const saved = await order.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Order created successfully.',
+            order: saved,
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: err.message,
+        });
+    }
+});
 
 app.post("/GetAllOrders", async (req, res) => {
     try {
-        const orders = await Order.find({ store: req.body.StoreId});
+        const storeId = req.body.storeId ?? req.body.StoreId ?? req.body.store ?? req.body.Store;
+        if (!storeId) {
+            return res.status(400).json({
+                success: false,
+                message: "Store id is required",
+            });
+        }
+
+        const orders = await Order.find({ store: storeId })
+            .populate({ path: 'product', select: 'name price imageUrl' });
          
 
         res.json({
@@ -408,9 +656,79 @@ app.post("/GetAllOrders", async (req, res) => {
     }
 });
 
+app.post('/MigrateOrdersSchema', async (req, res) => {
+    try {
+        const fallbackSize = (req.body.defaultSize ?? 'M').toString().trim() || 'M';
+
+        const [sizeResult, nameResult, locationResult, numeroResult] = await Promise.all([
+            Order.updateMany(
+                {
+                    $or: [
+                        { size: { $exists: false } },
+                        { size: null },
+                        { size: '' },
+                    ],
+                },
+                { $set: { size: fallbackSize } }
+            ),
+            Order.updateMany(
+                {
+                    $or: [
+                        { name: { $exists: false } },
+                        { name: null },
+                    ],
+                },
+                { $set: { name: '' } }
+            ),
+            Order.updateMany(
+                {
+                    $or: [
+                        { location: { $exists: false } },
+                        { location: null },
+                    ],
+                },
+                { $set: { location: '' } }
+            ),
+            Order.updateMany(
+                {
+                    $or: [
+                        { numero: { $exists: false } },
+                        { numero: null },
+                    ],
+                },
+                { $set: { numero: '' } }
+            ),
+        ]);
+
+        const modified = {
+            size: sizeResult.modifiedCount,
+            name: nameResult.modifiedCount,
+            location: locationResult.modifiedCount,
+            numero: numeroResult.modifiedCount,
+        };
+
+        res.json({
+            success: true,
+            message: 'Order schema migration completed',
+            fallbackSize,
+            modified,
+            totalModified: Object.values(modified).reduce((sum, value) => sum + value, 0),
+        });
+    } catch (error) {
+        console.error('Error migrating orders schema:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error migrating orders schema',
+            error: error.message,
+        });
+    }
+});
+
 app.post("/UpdateOrderStatus", async (req, res) => {
     try {
-        const order = await Order.findById(req.body.OrderId);
+        const orderId = req.body.orderId ?? req.body.OrderId;
+        const nextStatus = (req.body.status ?? '').toString().toLowerCase();
+        const order = await Order.findById(orderId);
 
         if (!order) {
             return res.json({
@@ -419,20 +737,35 @@ app.post("/UpdateOrderStatus", async (req, res) => {
             });
         }
 
-        const validStatuses = ['prepared', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+        const validStatuses = ['prepared', 'confirmed', 'shipped', 'delivered', 'canceled'];
 
-        if (!validStatuses.includes(req.body.status)) {
+        if (!validStatuses.includes(nextStatus)) {
             return res.json({
                 success: false,
                 message: "Invalid status, must be one of: " + validStatuses.join(', ')
             });
         }
 
-        order.status = req.body.status;
+        order.confirmed = nextStatus === 'confirmed' || nextStatus === 'shipped' || nextStatus === 'delivered';
+        order.prepared = nextStatus === 'prepared' || nextStatus === 'shipped' || nextStatus === 'delivered';
+        order.shipped = nextStatus === 'shipped' || nextStatus === 'delivered';
+        order.delivered = nextStatus === 'delivered';
+        order.canceled = nextStatus === 'canceled';
 
-        // if cancelled, save the reason
-        if (req.body.status === 'cancelled') {
-            order.cancelReason = req.body.cancelReason || '';
+        if (nextStatus === 'confirmed') {
+            order.confirmationDate = new Date();
+        }
+        if (nextStatus === 'prepared') {
+            order.preparationDate = new Date();
+        }
+        if (nextStatus === 'shipped') {
+            order.shippingDate = new Date();
+        }
+        if (nextStatus === 'delivered') {
+            order.deliveryDate = new Date();
+        }
+        if (nextStatus === 'canceled') {
+            order.cancellationDate = new Date();
         }
 
         await order.save();
@@ -440,7 +773,8 @@ app.post("/UpdateOrderStatus", async (req, res) => {
         res.json({
             success: true,
             message: "Order status updated successfully",
-            order: order
+            order,
+            status: nextStatus,
         });
 
     } catch (error) {

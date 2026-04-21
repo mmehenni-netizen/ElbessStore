@@ -25,6 +25,35 @@ const orderSchema = new Schema({
     required: true,
   },
 
+  price: {
+    type: Number,
+    default: 0,
+  },
+
+  size: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+
+  name: {
+    type: String,
+    default: "",
+    trim: true,
+  },
+
+  location: {
+    type: String,
+    default: "",
+    trim: true,
+  },
+
+  numero: {
+    type: String,
+    default: "",
+    trim: true,
+  },
+
   office: {
     type: Boolean,
     required: true,

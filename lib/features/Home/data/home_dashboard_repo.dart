@@ -4,7 +4,8 @@ class HomeDashboardOrderItem {
   final String id;
   final String orderNumber;
   final String title;
-  final String quantityLabel;
+  final String metaLabel;
+  final String badgeLabel;
   final String priceLabel;
   final double totalPrice;
   final String status;
@@ -15,7 +16,8 @@ class HomeDashboardOrderItem {
     required this.id,
     required this.orderNumber,
     required this.title,
-    required this.quantityLabel,
+    required this.metaLabel,
+    required this.badgeLabel,
     required this.priceLabel,
     required this.totalPrice,
     required this.status,
@@ -28,19 +30,27 @@ class HomeDashboardOrderItem {
     required int fallbackIndex,
   }) {
     final id = (json['_id'] ?? json['id'] ?? '').toString();
-    final status = (json['status'] ?? _statusFromFlags(json)).toString();
-    final totalPrice = _extractTotalPrice(json);
+    final status = _normalizeStatus((json['status'] ?? _statusFromFlags(json)).toString());
     final quantity = _extractQuantity(json);
+    final totalPrice = _extractTotalPrice(json, quantity);
+    final productName = _extractProductName(json).trim();
     final createdAt = DateTime.tryParse((json['createdAt'] ?? '').toString());
     final orderSuffix = id.length >= 4 ? id.substring(id.length - 4).toUpperCase() : '${fallbackIndex + 1}';
     final imageAsset = _assetForIndex(fallbackIndex);
+    final title = productName.isNotEmpty ? productName : 'Order #$orderSuffix';
+    final metaLabel = '#$orderSuffix · Qty: $quantity';
+    final badgeLabel = _badgeLabel(status);
+    final priceLabel = totalPrice > 0
+        ? '${totalPrice.toStringAsFixed(2)} dz'
+        : '0 dz';
 
     return HomeDashboardOrderItem(
       id: id,
       orderNumber: '#$orderSuffix',
-      title: 'Order #$orderSuffix',
-      quantityLabel: 'Qty: $quantity',
-      priceLabel: totalPrice > 0 ? '${totalPrice.toStringAsFixed(totalPrice.truncateToDouble() == totalPrice ? 0 : 2)} dz' : '0 dz',
+      title: title,
+      metaLabel: metaLabel,
+      badgeLabel: badgeLabel,
+      priceLabel: priceLabel,
       totalPrice: totalPrice,
       status: status,
       createdAt: createdAt,
@@ -48,19 +58,63 @@ class HomeDashboardOrderItem {
     );
   }
 
+  static String _extractProductName(Map<String, dynamic> json) {
+    final product = json['product'];
+    if (product is Map<String, dynamic>) {
+      return (product['name'] ?? '').toString();
+    }
+    return (json['type'] ?? '').toString();
+  }
+
+  static String _badgeLabel(String status) {
+    switch (status) {
+      case 'prepared':
+      case 'confirmed':
+        return 'new';
+      case 'shipped':
+        return 'shipped';
+      case 'delivered':
+        return 'delivered';
+      case 'canceled':
+        return 'canceled';
+      default:
+        return 'new';
+    }
+  }
+
+  static String _normalizeStatus(String status) {
+    final value = status.trim().toLowerCase();
+    if (value == 'cancelled') {
+      return 'canceled';
+    }
+    return value;
+  }
+
   static String _statusFromFlags(Map<String, dynamic> json) {
     if (json['delivered'] == true) return 'delivered';
     if (json['shipped'] == true) return 'shipped';
     if (json['prepared'] == true) return 'prepared';
     if (json['confirmed'] == true) return 'confirmed';
-    if (json['canceled'] == true || json['cancelled'] == true) return 'cancelled';
+    if (json['canceled'] == true || json['cancelled'] == true) return 'canceled';
     return 'prepared';
   }
 
-  static double _extractTotalPrice(Map<String, dynamic> json) {
+  static double _extractTotalPrice(Map<String, dynamic> json, int quantity) {
     final value = json['totalPrice'] ?? json['total_price'] ?? json['price'];
     if (value is num) {
       return value.toDouble();
+    }
+
+    final product = json['product'];
+    if (product is Map<String, dynamic>) {
+      final productPrice = product['price'];
+      if (productPrice is num) {
+        return productPrice.toDouble() * quantity;
+      }
+      final parsed = double.tryParse(productPrice?.toString() ?? '');
+      if (parsed != null) {
+        return parsed * quantity;
+      }
     }
 
     return double.tryParse(value?.toString() ?? '') ?? 0;
@@ -188,7 +242,7 @@ class HomeDashboardRepository {
 
   Future<List<HomeDashboardOrderItem>> getOrders(String storeId) async {
     try {
-      final response = await _apiService.post('/GetAllOrders', {'StoreId': storeId});
+      final response = await _apiService.post('/GetAllOrders', {'storeId': storeId});
 
       if (response is! Map<String, dynamic>) {
         throw Exception('Unexpected server response');

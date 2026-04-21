@@ -16,7 +16,8 @@ class Root extends StatefulWidget {
 
 class _RootState extends State<Root> {
   late PageController pageController;
-  late List<Widget> pages;
+  late List<Widget Function()> _pageBuilders;
+  final Map<int, Widget> _pageCache = {};
   int currentScreen = 0;
   final List<IconData> _icons = [
     CupertinoIcons.home,
@@ -33,15 +34,18 @@ class _RootState extends State<Root> {
   ];
   @override
   void initState() {
-    pageController = PageController(initialPage: currentScreen);
-    pages = [
-      Homebody(pageController: pageController),
-      Ordersview(),
-      Inventoryview(),
-      Addview(),
-      
-    ];
     super.initState();
+    pageController = PageController(initialPage: currentScreen);
+    _pageBuilders = [
+      () => Homebody(pageController: pageController),
+      () => const Ordersview(),
+      () => const Inventoryview(),
+      () => const Addview(),
+    ];
+  }
+
+  Widget _getPage(int index) {
+    return _pageCache.putIfAbsent(index, () => _pageBuilders[index]());
   }
 
   @override
@@ -58,10 +62,11 @@ class _RootState extends State<Root> {
 
     return Scaffold(
       extendBody: true,
-      body: PageView(
+      body: PageView.builder(
         physics: NeverScrollableScrollPhysics(),
         controller: pageController,
-        children: pages,
+        itemCount: _pageBuilders.length,
+        itemBuilder: (context, index) => _getPage(index),
         onPageChanged: (index) {
           setState(() {
             currentScreen = index;

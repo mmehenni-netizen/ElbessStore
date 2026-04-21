@@ -6,7 +6,7 @@ class OrderRepo {
 
   Future<List<OrderModel>> getOrders(String id) async {
     try {
-      final response = await _apiService.post('/GetAllOrders', {'StoreId': id});
+      final response = await _apiService.post('/GetAllOrders', {'storeId': id});
 
       if (response is! Map<String, dynamic>) {
         throw Exception('Unexpected server response');

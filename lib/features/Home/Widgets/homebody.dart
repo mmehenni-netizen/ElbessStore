@@ -212,9 +212,9 @@ class _HomebodyState extends State<Homebody> {
                   return Padding(
                     padding: EdgeInsets.only(bottom: ds * 1.5),
                     child: Homeordercard(
-                      img: order.imageAsset,
                       productname: order.title,
-                      ordercount: '${order.orderNumber} · ${order.quantityLabel} · ${order.status}',
+                      ordercount: order.metaLabel,
+                      badgeLabel: order.badgeLabel,
                       price: order.priceLabel,
                     ),
                   );

@@ -184,15 +184,19 @@ class ProductModel {
 			return overrideBaseUrl;
 		}
 
-		if (kIsWeb) {
+		if (kReleaseMode) {
 			return 'https://elbessstore.onrender.com';
+		}
+
+		if (kIsWeb) {
+			return 'http://localhost:3000';
 		}
 
 		if (defaultTargetPlatform == TargetPlatform.android) {
-			return 'https://elbessstore.onrender.com';
+			return 'http://10.0.2.2:3000';
 		}
 
-		return 'https://elbessstore.onrender.com';
+		return 'http://localhost:3000';
 	}
 
 	static String _joinUrl(String baseUrl, String path) {

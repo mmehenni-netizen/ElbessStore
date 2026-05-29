@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
+// Using local bundled fonts declared in pubspec.yaml
 
 enum PlanType { monthly, yearly }
 
@@ -64,21 +64,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('ELBESS',
-                        style: GoogleFonts.sora(
-                            color: heading,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 28)),
+                      style: TextStyle(
+                        fontFamily: 'bold',
+                        color: heading,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 28)),
                     Text('Cancel anytime',
-                        style: GoogleFonts.dmSans(
-                            color: bodyText, fontSize: 12)),
+                      style: TextStyle(
+                        fontFamily: 'regular', color: bodyText, fontSize: 12)),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text('Choose your plan to get started',
-                    style: GoogleFonts.sora(
-                        color: heading,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                    fontFamily: 'semi',
+                    color: heading,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600)),
                 const SizedBox(height: 24),
 
                 // Toggle
@@ -147,10 +149,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                       GestureDetector(
                         onTap: () => Navigator.pushNamed(context, '/login'),
                         child: Text('Already have a subscription? Log in',
-                            style: GoogleFonts.dmSans(
-                                color: bodyText,
-                                fontSize: 13,
-                                decoration: TextDecoration.underline)),
+                          style: TextStyle(
+                            fontFamily: 'regular',
+                            color: bodyText,
+                            fontSize: 13,
+                            decoration: TextDecoration.underline)),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -158,9 +161,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                         children: [
                           const Icon(Icons.lock, size: 14, color: Colors.grey),
                           const SizedBox(width: 6),
-                          Text('Secure payment processing',
-                              style: GoogleFonts.dmSans(
-                                  color: Colors.grey, fontSize: 12)),
+                            Text('Secure payment processing',
+                              style: TextStyle(fontFamily: 'regular', color: Colors.grey, fontSize: 12)),
                         ],
                       )
                     ],
@@ -194,10 +196,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                     : Alignment.centerLeft,
                 child: Center(
                   child: Text('Monthly',
-                      style: GoogleFonts.dmSans(
-                          color: selectedPlan == PlanType.monthly
-                              ? Colors.white
-                              : primary)),
+                    style: TextStyle(
+                      fontFamily: 'regular',
+                      color: selectedPlan == PlanType.monthly
+                        ? Colors.white
+                        : primary)),
                 ),
                 decoration: BoxDecoration(
                   color: selectedPlan == PlanType.monthly ? primary : Colors.transparent,
@@ -220,8 +223,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   alignment: Alignment.center,
                   children: [
                     Text('Yearly',
-                        style: GoogleFonts.dmSans(
-                            color: selectedPlan == PlanType.yearly ? Colors.white : primary)),
+                      style: TextStyle(
+                        fontFamily: 'regular',
+                        color: selectedPlan == PlanType.yearly ? Colors.white : primary)),
                     if (selectedPlan == PlanType.yearly)
                       Positioned(
                         right: 8,
@@ -232,7 +236,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                             color: const Color(0xFFFFD27A),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text('Save 17%', style: GoogleFonts.dmSans(fontSize: 11)),
+                          child: Text('Save 17%', style: TextStyle(fontFamily: 'regular', fontSize: 11)),
                         ),
                       )
                   ],
@@ -293,9 +297,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(title,
-                      style: GoogleFonts.sora(
-                          color: heading, fontWeight: FontWeight.w700, fontSize: 16)),
+                    Text(title,
+                      style: TextStyle(
+                        fontFamily: 'bold', color: heading, fontWeight: FontWeight.w700, fontSize: 16)),
                   if (recommended)
                     _mostPopularBadge(badgeAnimation),
                 ],
@@ -304,12 +308,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(price,
-                      style: GoogleFonts.sora(
-                          color: heading, fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text(price,
+                      style: TextStyle(
+                        fontFamily: 'bold', color: heading, fontSize: 18, fontWeight: FontWeight.w700)),
                   const SizedBox(width: 8),
                   if (priceSub != null)
-                    Text('($priceSub)', style: GoogleFonts.dmSans(color: bodyText)),
+                    Text('($priceSub)', style: TextStyle(fontFamily: 'regular', color: bodyText)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -341,8 +345,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                 const SizedBox(width: 12),
                                 Expanded(
                                     child: Text(f,
-                                        style: GoogleFonts.dmSans(
-                                            color: bodyText, fontSize: 14))),
+                                        style: TextStyle(
+                                                        fontFamily: 'regular', color: bodyText, fontSize: 14))),
                               ],
                             ),
                           ))
@@ -364,8 +368,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(ctaText,
-                            style: GoogleFonts.dmSans(
-                                color: outlined ? primary : Colors.white)),
+                          style: TextStyle(
+                            fontFamily: 'regular', color: outlined ? primary : Colors.white)),
                       ),
                     ),
                   ),
@@ -393,7 +397,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           ),
           child: Row(
             children: [
-              Text('Most Popular', style: GoogleFonts.dmSans(fontSize: 12)),
+              Text('Most Popular', style: TextStyle(fontFamily: 'regular', fontSize: 12)),
               const SizedBox(width: 6),
               Container(
                 width: 8,

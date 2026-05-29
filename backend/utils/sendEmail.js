@@ -63,7 +63,7 @@ const createTransporter = () => {
 const transporter = createTransporter();
 
 const sendVerificationEmail = async (email, token) => {
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const clientUrl = process.env.CLIENT_URL || 'https://elbessstore.onrender.com';
     const verificationUrl = `${clientUrl}/verify-email?token=${token}`;
     
     const mailOptions = {

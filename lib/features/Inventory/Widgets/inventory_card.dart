@@ -20,7 +20,7 @@ class InventoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ds = SizeConfig.defaultSize!;
+    final ds = SizeConfig.defaultSize ?? 10;
     return Container(
       padding: EdgeInsets.all(ds * 1.2),
       decoration: BoxDecoration(
@@ -39,10 +39,11 @@ class InventoryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
+            clipBehavior: Clip.antiAlias,
             borderRadius: BorderRadius.circular(ds),
             child: Container(
               color: Colors.grey[200],
-              child: _buildImage(ds),
+              child: _buildImage(context, ds),
             ),
           ),
           Gap(ds * 1.2),
@@ -133,64 +134,59 @@ class InventoryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImage(double ds) {
-    final imageSize = (ds * 9).round();
+  Widget _buildImage(BuildContext context, double ds) {
+    final logicalImageSize = ds * 9;
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final cacheSize = (logicalImageSize * devicePixelRatio).round();
+    final parsedUri = Uri.tryParse(imagePath);
+    final isNetworkImage =
+        parsedUri != null && parsedUri.hasScheme && parsedUri.host.isNotEmpty;
 
     if (imagePath.trim().isEmpty) {
-      return Container(
-        width: ds * 8,
-        height: ds * 8,
-        color: Colors.grey[200],
-        child: Icon(
-          Icons.image_not_supported_outlined,
-          color: Colors.grey.shade500,
-          size: ds * 2.4,
-        ),
-      );
+      return _buildPlaceholder(logicalImageSize, ds, Icons.image_not_supported_outlined);
     }
 
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    if (isNetworkImage) {
       return Image.network(
         imagePath,
-        width: ds * 8,
-        height: ds * 8,
+        width: logicalImageSize,
+        height: logicalImageSize,
         fit: BoxFit.contain,
-        cacheWidth: imageSize,
-        cacheHeight: imageSize,
+        alignment: Alignment.center,
+        filterQuality: FilterQuality.high,
+        cacheWidth: cacheSize,
+        cacheHeight: cacheSize,
         errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: ds * 9,
-            height: ds * 9,
-            color: Colors.grey[200],
-            child: Icon(
-              Icons.broken_image_outlined,
-              color: Colors.grey.shade500,
-              size: ds * 2.4,
-            ),
-          );
+          return _buildPlaceholder(logicalImageSize, ds, Icons.broken_image_outlined);
         },
       );
     }
 
     return Image.asset(
       imagePath,
-      width: ds * 9,
-      height: ds * 9,
+      width: logicalImageSize,
+      height: logicalImageSize,
       fit: BoxFit.contain,
-      cacheWidth: imageSize,
-      cacheHeight: imageSize,
+      alignment: Alignment.center,
+      filterQuality: FilterQuality.high,
+      cacheWidth: cacheSize,
+      cacheHeight: cacheSize,
       errorBuilder: (context, error, stackTrace) {
-        return Container(
-          width: ds * 9,
-          height: ds * 9,
-          color: Colors.grey[200],
-          child: Icon(
-            Icons.broken_image_outlined,
-            color: Colors.grey.shade500,
-            size: ds * 2.4,
-          ),
-        );
+        return _buildPlaceholder(logicalImageSize, ds, Icons.broken_image_outlined);
       },
+    );
+  }
+
+  Widget _buildPlaceholder(double logicalImageSize, double ds, IconData icon) {
+    return Container(
+      width: logicalImageSize,
+      height: logicalImageSize,
+      color: Colors.grey[200],
+      child: Icon(
+        icon,
+        color: Colors.grey.shade500,
+        size: ds * 2.4,
+      ),
     );
   }
 }

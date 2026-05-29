@@ -17,43 +17,53 @@ class Customstockwarncard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ds = SizeConfig.defaultSize!;
-    return  Material(
-              elevation: 4,
-              shadowColor: Colors.grey.shade300,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ds * 1.5)),
-              child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: ds * 1.8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(productname, style: TextStyle(fontSize: ds * 1.6, fontFamily: "semi", color: Colors.black),),
-                          Gap(ds * 0.5),
-                      Text(productcategory, style: TextStyle(fontSize: ds * 1.4, fontFamily: "semi", color: Colors.grey.shade500),),
-                        ],
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: ds * 1.4, vertical: ds * 0.7),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(ds * 2.5),
-                        ),
-                        child: Text(productsleft, style: TextStyle(fontSize: ds * 1.4, fontFamily: "semi", color: Colors.red),),
-                      ),
-                      
-                      
-                    ],
-                  ),
-                  height: ds * 8,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(ds * 1.5),
-                    color: Colors.white,
-                    
-                  ),
+    return Container(
+      height: ds * 8,
+      padding: EdgeInsets.symmetric(horizontal: ds * 1.8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(ds * 1.5),
+        border: Border.all(color: const Color(0xFFF1D4CC)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withOpacity(0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                productname,
+                style: TextStyle(fontSize: ds * 1.6, fontFamily: 'semi', color: const Color(0xFF111827)),
               ),
-            );
+              Gap(ds * 0.5),
+              Text(
+                productcategory,
+                style: TextStyle(fontSize: ds * 1.3, fontFamily: 'semi', color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: ds * 1.4, vertical: ds * 0.7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1EC),
+              borderRadius: BorderRadius.circular(ds * 2.5),
+              border: Border.all(color: const Color(0xFFFBC9BC)),
+            ),
+            child: Text(
+              productsleft,
+              style: TextStyle(fontSize: ds * 1.25, fontFamily: 'semi', color: const Color(0xFFD94A2E)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

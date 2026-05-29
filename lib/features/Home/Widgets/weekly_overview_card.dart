@@ -17,21 +17,16 @@ class WeeklyOverviewCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(ds * 1.8),
       decoration: BoxDecoration(
-        color: const Color(0xFF2D2B28),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(ds * 2.3),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: const Color(0xFFE8EBF2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
+            color: const Color(0xFF0F172A).withOpacity(0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF32302D), Color(0xFF262421)],
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,27 +43,37 @@ class WeeklyOverviewCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: ds * 2.2,
                         fontFamily: 'semi',
-                        color: Colors.white.withOpacity(0.96),
+                        color: const Color(0xFF111827),
                       ),
                     ),
                     Gap(ds * 0.3),
                     Text(
-                      _formatRevenue(summary.totalRevenue),
+                      'Delivered revenue',
+                      style: TextStyle(
+                        fontSize: ds * 1.2,
+                        fontFamily: 'medium',
+                        color: const Color(0xFF64748B),
+                      ),
+                    ),
+                    Gap(ds * 0.3),
+                    Text(
+                      _formatRevenue(summary.deliveredRevenue),
                       style: TextStyle(
                         fontSize: ds * 3.2,
                         height: 1,
                         fontFamily: 'bold',
-                        color: Colors.white,
+                        color: const Color(0xFF111827),
                       ),
                     ),
                     Gap(ds * 0.6),
-                    Text(
-                      '${summary.totalOrders} orders this week',
-                      style: TextStyle(
-                        fontSize: ds * 1.5,
-                        fontFamily: 'semi',
-                        color: Colors.white.withOpacity(0.62),
-                      ),
+                    Wrap(
+                      spacing: ds * 0.8,
+                      runSpacing: ds * 0.8,
+                      children: [
+                        _MetricChip(label: 'Orders', value: '${summary.totalOrders}'),
+                        _MetricChip(label: 'Delivered', value: '${summary.deliveredCount}'),
+                        _MetricChip(label: 'Avg order', value: _formatRevenue(summary.averageOrderValue)),
+                      ],
                     ),
                   ],
                 ),
@@ -79,15 +84,16 @@ class WeeklyOverviewCard extends StatelessWidget {
                   vertical: ds * 0.8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F3FF),
+                  color: const Color(0xFFF5F7FB),
                   borderRadius: BorderRadius.circular(ds * 2.5),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Text(
                   'This week',
                   style: TextStyle(
                     fontSize: ds * 1.3,
                     fontFamily: 'semi',
-                    color: const Color(0xFF4A47D1),
+                    color: const Color(0xFF475569),
                   ),
                 ),
               ),
@@ -98,9 +104,9 @@ class WeeklyOverviewCard extends StatelessWidget {
             spacing: ds * 2,
             runSpacing: ds * 1,
             children: const [
-              _LegendDot(color: Color(0xFF6C73FF), label: 'Orders'),
-              _LegendDot(color: Color(0xFF1FC79C), label: 'Revenue'),
-              _LegendDot(color: Color(0xFF9C5AF8), label: 'Delivered'),
+              _LegendDot(color: Color(0xFF4F6DF5), label: 'Orders'),
+              _LegendDot(color: Color(0xFF17B887), label: 'Revenue'),
+              _LegendDot(color: Color(0xFF8B5CF6), label: 'Delivered'),
             ],
           ),
           Gap(ds * 1.2),
@@ -115,17 +121,15 @@ class WeeklyOverviewCard extends StatelessWidget {
                     top: ds * 1,
                     bottom: ds * 2.5,
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(ds * 1.2),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF323840).withOpacity(0.28),
-                        borderRadius: BorderRadius.circular(ds * 1.2),
-                      ),
-                      child: CustomPaint(
-                        painter: _WeeklyOverviewPainter(summary: summary),
-                        child: const SizedBox.expand(),
-                      ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(ds * 1.2),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: CustomPaint(
+                      painter: _WeeklyOverviewPainter(summary: summary),
+                      child: const SizedBox.expand(),
                     ),
                   ),
                 ),
@@ -194,7 +198,7 @@ class _LegendDot extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: const Color(0xFF475569),
             fontFamily: 'semi',
             fontSize: 13,
           ),
@@ -256,7 +260,7 @@ class _AxisLabel extends StatelessWidget {
     return Text(
       value,
       style: TextStyle(
-        color: Colors.white.withOpacity(0.48),
+        color: const Color(0xFF94A3B8),
         fontFamily: 'regular',
         fontSize: ds * 1.15,
       ),
@@ -280,7 +284,7 @@ class _WeekdayLabels extends StatelessWidget {
             (day) => Text(
               day,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.62),
+                color: const Color(0xFF94A3B8),
                 fontFamily: 'regular',
                 fontSize: ds * 1.1,
               ),
@@ -311,7 +315,7 @@ class _WeeklyOverviewPainter extends CustomPainter {
     );
 
     final gridPaint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = const Color(0xFFE2E8F0)
       ..strokeWidth = 1;
 
     final gridStep = chartRect.height / 4;
@@ -344,15 +348,15 @@ class _WeeklyOverviewPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          const Color(0xFF6C73FF).withOpacity(0.28),
-          const Color(0xFF6C73FF).withOpacity(0.05),
+          const Color(0xFF4F6DF5).withOpacity(0.16),
+          const Color(0xFF4F6DF5).withOpacity(0.03),
         ],
       ).createShader(chartRect)
       ..style = PaintingStyle.fill;
     canvas.drawPath(fillPath, fillPaint);
 
     final ordersPaint = Paint()
-      ..color = const Color(0xFF6C73FF)
+      ..color = const Color(0xFF4F6DF5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.8
       ..strokeCap = StrokeCap.round
@@ -360,22 +364,22 @@ class _WeeklyOverviewPainter extends CustomPainter {
     canvas.drawPath(_smoothPath(ordersPoints), ordersPaint);
 
     final revenuePaint = Paint()
-      ..color = const Color(0xFF1FC79C)
+      ..color = const Color(0xFF17B887)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.6
       ..strokeCap = StrokeCap.round;
     _drawDashedPath(canvas, _smoothPath(revenuePoints), revenuePaint, [7, 6]);
 
     final deliveredPaint = Paint()
-      ..color = const Color(0xFF9C5AF8)
+      ..color = const Color(0xFF8B5CF6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round;
     _drawDashedPath(canvas, _smoothPath(deliveredPoints), deliveredPaint, [1, 5]);
 
-    _drawPoints(canvas, ordersPoints, const Color(0xFF6C73FF));
-    _drawPoints(canvas, revenuePoints, const Color(0xFF1FC79C));
-    _drawPoints(canvas, deliveredPoints, const Color(0xFF9C5AF8));
+    _drawPoints(canvas, ordersPoints, const Color(0xFF4F6DF5));
+    _drawPoints(canvas, revenuePoints, const Color(0xFF17B887));
+    _drawPoints(canvas, deliveredPoints, const Color(0xFF8B5CF6));
 
     final highlightWidth = chartRect.width * 0.32;
     final highlightRect = RRect.fromRectAndRadius(
@@ -392,7 +396,7 @@ class _WeeklyOverviewPainter extends CustomPainter {
 
     canvas.drawRRect(
       highlightRect,
-      Paint()..color = Colors.white.withOpacity(0.04),
+      Paint()..color = const Color(0xFF4F6DF5).withOpacity(0.05),
     );
   }
 
@@ -494,5 +498,45 @@ class _WeeklyOverviewPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _WeeklyOverviewPainter oldDelegate) {
     return oldDelegate.summary != summary;
+  }
+}
+
+class _MetricChip extends StatelessWidget {
+  const _MetricChip({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'semi',
+              color: Color(0xFF64748B),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'bold',
+              color: Color(0xFF111827),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

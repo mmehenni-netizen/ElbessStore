@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:elbess_store/core/network/api_error.dart';
 import 'package:elbess_store/core/network/api_exception.dart';
 import 'package:elbess_store/core/network/api_service.dart';
-import 'package:elbess_store/core/utils/pref_helpers%20.dart';
+import 'package:elbess_store/core/utils/pref_helpers.dart';
 import 'package:elbess_store/features/Auth/data/storemodel.dart';
 
 class AuthRepo {
@@ -90,6 +90,9 @@ class AuthRepo {
       }
 
       if (response['creation'] == true) {
+        await PrefHelpers.removeToken();
+        await PrefHelpers.removeStoreId();
+        await PrefHelpers.removeStoreName();
         final result = response['result'];
         if (result is Map<String, dynamic>) {
           final store = StoreModel.fromJson(result);

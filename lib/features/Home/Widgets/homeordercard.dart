@@ -20,7 +20,7 @@ class Homeordercard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ds = SizeConfig.defaultSize!;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: ds * 1.8, vertical: ds * 1.2),
+      padding: EdgeInsets.symmetric(horizontal: ds * 1.7, vertical: ds * 1.25),
       child: Row(
         children: [
           Expanded(
@@ -31,7 +31,7 @@ class Homeordercard extends StatelessWidget {
                   productname,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: ds * 1.5, fontFamily: "semi", color: Colors.black),
+                  style: TextStyle(fontSize: ds * 1.5, fontFamily: 'semi', color: const Color(0xFF111827)),
                 ),
                 Gap(ds * 0.75),
                 Wrap(
@@ -41,38 +41,55 @@ class Homeordercard extends StatelessWidget {
                   children: [
                     Text(
                       ordercount,
-                      style: TextStyle(fontSize: ds * 1.3, fontFamily: "semi", color: Colors.grey.shade500),
+                      style: TextStyle(fontSize: ds * 1.3, fontFamily: 'semi', color: Colors.grey.shade600),
                     ),
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: ds * 0.7, vertical: ds * 0.18),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDDEAFF),
+                        color: const Color(0xFFF1F5FF),
                         borderRadius: BorderRadius.circular(ds),
+                        border: Border.all(color: const Color(0xFFD7E3FF)),
                       ),
                       child: Text(
                         badgeLabel,
                         style: TextStyle(
                           fontSize: ds * 1.0,
-                          fontFamily: "semi",
-                          color: const Color(0xFF3B82F6),
+                          fontFamily: 'semi',
+                          color: const Color(0xFF4F6DF5),
                         ),
                       ),
                     ),
                   ],
                 ),
                 Gap(ds * 0.8),
-                Text(price, style: TextStyle(fontSize: ds * 1.4, fontFamily: "semi", color: AppColors.primary)),
+                Text(price, style: TextStyle(fontSize: ds * 1.4, fontFamily: 'semi', color: const Color(0xFF0F172A))),
               ],
             ),
           ),
           Gap(ds),
-          Icon(CupertinoIcons.chevron_right, size: ds * 2.4, color: Colors.grey.shade400),
+          Container(
+            width: ds * 3,
+            height: ds * 3,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(ds * 1.2),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Icon(CupertinoIcons.chevron_right, size: ds * 1.8, color: Colors.grey.shade500),
+          ),
         ],
       ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(ds * 1.5),
-        border: Border.all(color: Colors.black, width: 0.5),
+        borderRadius: BorderRadius.circular(ds * 1.6),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
         color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
     );
   }

@@ -11,7 +11,7 @@ class SizeQuantityModel {
 
 	factory SizeQuantityModel.fromJson(Map<String, dynamic> json) {
 		return SizeQuantityModel(
-			size: (json['size'] ?? json['Size'] ?? '') as String,
+			size: _asString(json['size'] ?? json['Size']),
 			quantity: _asInt(json['quantity'] ?? json['Quantity']),
 		);
 	}
@@ -28,6 +28,12 @@ class SizeQuantityModel {
 		if (value is num) return value.toInt();
 		if (value is String) return int.tryParse(value) ?? fallback;
 		return fallback;
+	}
+
+	static String _asString(dynamic value, {String fallback = ''}) {
+		if (value == null) return fallback;
+		final text = value.toString().trim();
+		return text.isEmpty ? fallback : text;
 	}
 }
 
@@ -58,11 +64,12 @@ class ProductModel {
 			return '';
 		}
 
-		if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+		final parsedUri = Uri.tryParse(imageUrl);
+		if (parsedUri != null && parsedUri.hasScheme && parsedUri.host.isNotEmpty) {
 			return imageUrl;
 		}
 
-		return _resolveImageBaseUrl() + imageUrl;
+		return _joinUrl(_resolveImageBaseUrl(), imageUrl);
 	}
 
 	const ProductModel({
@@ -95,19 +102,16 @@ class ProductModel {
 
 		return ProductModel(
 			id: json['_id']?.toString(),
-			name: (json['name'] ?? json['Name'] ?? '') as String,
+			name: _asString(json['name'] ?? json['Name']),
 			price: _asDouble(json['price'] ?? json['Price']),
 			rating: _asDouble(json['rating'] ?? json['Rating']),
 			totalRates: _asInt(json['totalRates']),
 			totalQuantity: _asInt(json['totalQuantity'] ?? json['TotalQuantity']),
-			sizeQuantities: ((json['sizeQuantities'] ?? json['SizeQuantities']) as List<dynamic>? ?? const [])
-					.whereType<Map<String, dynamic>>()
-					.map(SizeQuantityModel.fromJson)
-					.toList(),
+			sizeQuantities: _extractSizeQuantities(json['sizeQuantities'] ?? json['SizeQuantities']),
 			store: (json['store'] ?? json['Store'])?.toString(),
 			imageUrls: urls,
-			category: (json['category'] ?? json['Category'] ?? '') as String,
-			gender: (json['gender'] ?? json['Gender'] ?? '') as String,
+			category: _asString(json['category'] ?? json['Category']),
+			gender: _asString(json['gender'] ?? json['Gender']),
 			version: json['__v'] is int ? json['__v'] as int : null,
 		);
 	}
@@ -143,6 +147,33 @@ class ProductModel {
 		return fallback;
 	}
 
+	static String _asString(dynamic value, {String fallback = ''}) {
+		if (value == null) return fallback;
+		final text = value.toString().trim();
+		return text.isEmpty ? fallback : text;
+	}
+
+	static List<SizeQuantityModel> _extractSizeQuantities(dynamic value) {
+		if (value is List) {
+			return value
+				.whereType<Map>()
+				.map((item) => item.map(
+					(key, itemValue) => MapEntry(key.toString(), itemValue),
+				))
+				.map(SizeQuantityModel.fromJson)
+				.toList();
+		}
+
+		if (value is Map) {
+			final normalized = value.map(
+				(key, itemValue) => MapEntry(key.toString(), itemValue),
+			);
+			return [SizeQuantityModel.fromJson(normalized)];
+		}
+
+		return const [];
+	}
+
 	static String _resolveImageBaseUrl() {
 		const overrideBaseUrl = String.fromEnvironment('API_BASE_URL');
 		if (overrideBaseUrl.isNotEmpty) {
@@ -150,13 +181,21 @@ class ProductModel {
 		}
 
 		if (kIsWeb) {
-			return 'http://localhost:3000';
+			return 'https://elbessstore.onrender.com';
 		}
 
 		if (defaultTargetPlatform == TargetPlatform.android) {
-			return 'http://10.0.2.2:3000';
+			return 'https://elbessstore.onrender.com';
 		}
 
-		return 'http://localhost:3000';
+		return 'https://elbessstore.onrender.com';
+	}
+
+	static String _joinUrl(String baseUrl, String path) {
+		final normalizedBase = baseUrl.endsWith('/')
+			? baseUrl.substring(0, baseUrl.length - 1)
+			: baseUrl;
+		final normalizedPath = path.startsWith('/') ? path : '/$path';
+		return '$normalizedBase$normalizedPath';
 	}
 }

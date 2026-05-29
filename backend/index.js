@@ -352,6 +352,7 @@ app.post("/SignUp", upload.single('Logo'), async (req, res) => {
         return res.json({
             creation: true,
             message: "Store created successfully",
+            result: newStore.toObject(),
         });
     } catch (error) {
         console.error('SignUp error:', error);
@@ -659,8 +660,8 @@ app.post("/AddOrder", async (req, res) => {
             numero: normalizedNumero,
             office: isOffice,
             domicile: isDomicile,
-            prepared: true,
-            preparationDate: new Date(),
+            confirmed: true,
+            confirmationDate: new Date(),
         });
 
         const saved = await order.save();
@@ -789,7 +790,7 @@ app.post("/UpdateOrderStatus", async (req, res) => {
             });
         }
 
-        const validStatuses = ['prepared', 'confirmed', 'shipped', 'delivered', 'canceled'];
+        const validStatuses = ['confirmed', 'prepared', 'shipped', 'delivered', 'canceled'];
 
         if (!validStatuses.includes(nextStatus)) {
             return res.json({
@@ -798,7 +799,7 @@ app.post("/UpdateOrderStatus", async (req, res) => {
             });
         }
 
-        order.confirmed = nextStatus === 'confirmed' || nextStatus === 'shipped' || nextStatus === 'delivered';
+        order.confirmed = nextStatus === 'confirmed' || nextStatus === 'prepared' || nextStatus === 'shipped' || nextStatus === 'delivered';
         order.prepared = nextStatus === 'prepared' || nextStatus === 'shipped' || nextStatus === 'delivered';
         order.shipped = nextStatus === 'shipped' || nextStatus === 'delivered';
         order.delivered = nextStatus === 'delivered';

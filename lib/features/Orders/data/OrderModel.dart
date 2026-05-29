@@ -127,7 +127,7 @@ class OrderModel {
 		if (shipped) return 'shipped';
 		if (prepared) return 'prepared';
 		if (confirmed) return 'confirmed';
-		return 'prepared';
+		return 'confirmed';
 	}
 
 	Map<String, dynamic> toJson() {

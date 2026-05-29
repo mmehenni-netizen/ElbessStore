@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart' show BaseOptions, Dio, InterceptorsWrapper;
-import 'package:elbess_store/core/utils/pref_helpers%20.dart';
+import 'package:elbess_store/core/utils/pref_helpers.dart';
 import 'package:flutter/foundation.dart';
 
 class DioClient {
@@ -31,13 +31,13 @@ class DioClient {
     }
 
     if (kIsWeb) {
-      return 'http://localhost:3000';
+      return 'https://elbessstore.onrender.com';
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:3000';
+      return 'https://elbessstore.onrender.com';
     }
 
-    return 'http://localhost:3000';
+    return 'https://elbessstore.onrender.com';
   }
 }

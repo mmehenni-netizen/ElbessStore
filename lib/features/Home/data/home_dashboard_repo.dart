@@ -96,7 +96,7 @@ class HomeDashboardOrderItem {
     if (json['prepared'] == true) return 'prepared';
     if (json['confirmed'] == true) return 'confirmed';
     if (json['canceled'] == true || json['cancelled'] == true) return 'canceled';
-    return 'prepared';
+    return 'confirmed';
   }
 
   static double _extractTotalPrice(Map<String, dynamic> json, int quantity) {
@@ -156,6 +156,8 @@ class HomeDashboardOrderItem {
 class WeeklyOverviewSummary {
   final int totalOrders;
   final double totalRevenue;
+  final double deliveredRevenue;
+  final double averageOrderValue;
   final int deliveredCount;
   final List<double> ordersSeries;
   final List<double> revenueSeries;
@@ -165,6 +167,8 @@ class WeeklyOverviewSummary {
   const WeeklyOverviewSummary({
     required this.totalOrders,
     required this.totalRevenue,
+    required this.deliveredRevenue,
+    required this.averageOrderValue,
     required this.deliveredCount,
     required this.ordersSeries,
     required this.revenueSeries,
@@ -176,6 +180,8 @@ class WeeklyOverviewSummary {
     return const WeeklyOverviewSummary(
       totalOrders: 0,
       totalRevenue: 0,
+      deliveredRevenue: 0,
+      averageOrderValue: 0,
       deliveredCount: 0,
       ordersSeries: [0, 0, 0, 0, 0, 0, 0],
       revenueSeries: [0, 0, 0, 0, 0, 0, 0],
@@ -192,6 +198,7 @@ class WeeklyOverviewSummary {
     final deliveredSeries = List<double>.filled(7, 0);
     var deliveredCount = 0;
     var totalRevenue = 0.0;
+    var deliveredRevenue = 0.0;
 
     for (var index = 0; index < orders.length; index++) {
       final order = orders[index];
@@ -205,10 +212,11 @@ class WeeklyOverviewSummary {
       final isDelivered = order.status.toLowerCase() == 'delivered';
 
       ordersSeries[normalizedIndex] += 1;
-      revenueSeries[normalizedIndex] += orderPrice;
       if (isDelivered) {
+        revenueSeries[normalizedIndex] += orderPrice;
         deliveredSeries[normalizedIndex] += 1;
         deliveredCount += 1;
+        deliveredRevenue += orderPrice;
       }
       totalRevenue += orderPrice;
     }
@@ -223,6 +231,8 @@ class WeeklyOverviewSummary {
     return WeeklyOverviewSummary(
       totalOrders: orders.length,
       totalRevenue: totalRevenue,
+      deliveredRevenue: deliveredRevenue,
+      averageOrderValue: deliveredCount == 0 ? 0 : deliveredRevenue / deliveredCount,
       deliveredCount: deliveredCount,
       ordersSeries: ordersSeries,
       revenueSeries: revenueSeries,

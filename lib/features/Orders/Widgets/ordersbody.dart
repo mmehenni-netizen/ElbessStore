@@ -1,4 +1,4 @@
-import 'package:elbess_store/core/utils/pref_helpers%20.dart';
+import 'package:elbess_store/core/utils/pref_helpers.dart';
 import 'package:elbess_store/features/Orders/data/OrderModel.dart';
 import 'package:elbess_store/core/utils/size_config.dart';
 import 'package:elbess_store/features/Orders/Widgets/customordertype.dart';
@@ -16,7 +16,7 @@ class Ordersbody extends StatefulWidget {
 
 class _OrdersbodyState extends State<Ordersbody> {
   int selectedIndex = 0;
-  final List<String> type = ["All", "confirmed", "prepared", "shipped", "delivered"];
+  final List<String> type = ["All", "confirmed", "prepared", "shipped", "delivered", "canceled"];
   final OrderRepo _orderRepo = OrderRepo();
   final List<Map<String, String>> _orders = [];
 
@@ -25,6 +25,7 @@ class _OrdersbodyState extends State<Ordersbody> {
     "prepared",
     "shipped",
     "delivered",
+    "canceled",
   ];
 
   @override
@@ -48,6 +49,8 @@ class _OrdersbodyState extends State<Ordersbody> {
         return const Color(0xFF27AE60);
       case 'delivered':
         return const Color(0xFFE74C3C);
+      case 'canceled':
+        return const Color(0xFFB03A2E);
       default:
         return Colors.grey;
     }
@@ -63,6 +66,8 @@ class _OrdersbodyState extends State<Ordersbody> {
         return Icons.local_shipping_outlined;
       case 'delivered':
         return Icons.task_alt_outlined;
+      case 'canceled':
+        return Icons.cancel_outlined;
       default:
         return Icons.circle_outlined;
     }
@@ -170,9 +175,29 @@ class _OrdersbodyState extends State<Ordersbody> {
       return;
     }
 
-    setState(() {
-      _orders[orderIndex]["status"] = selectedStatus;
-    });
+    final orderId = _orders[orderIndex]["id"];
+    if (orderId == null || orderId.isEmpty) {
+      return;
+    }
+
+    try {
+      await _orderRepo.updateOrderStatus(
+        orderId: orderId,
+        status: selectedStatus,
+      );
+
+      await getOrders();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to update order status'),
+        ),
+      );
+    }
   }
   Future<void> getOrders() async {
     final id = await PrefHelpers.getStoreId();
@@ -216,6 +241,7 @@ class _OrdersbodyState extends State<Ordersbody> {
             : '-');
 
     return {
+      "id": order.id,
       "number": orderNumber,
       "status": order.status,
       "price": effectivePrice > 0 ? '${effectivePrice.toStringAsFixed(2)} dz' : '0 dz',

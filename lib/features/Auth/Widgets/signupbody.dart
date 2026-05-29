@@ -6,13 +6,15 @@ import 'package:elbess_store/core/constants/textfield.dart';
 import 'package:elbess_store/core/utils/size_config.dart';
 import 'package:elbess_store/features/Auth/Presentation/Pages/email_verification_check.dart';
 import 'package:elbess_store/features/Auth/Presentation/Pages/login_view.dart';
+import '../../../core/models/plan_type.dart';
 import 'package:elbess_store/features/Auth/data/auth_repo.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart' show Gap;
 import 'package:image_picker/image_picker.dart';
 
 class Signupbody extends StatefulWidget {
-  const Signupbody({super.key});
+  final PlanType? selectedPlan;
+  const Signupbody({super.key, this.selectedPlan});
 
   @override
   State<Signupbody> createState() => _SignupbodyState();

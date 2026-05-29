@@ -1,0 +1,1 @@
+enum PlanType { monthly, yearly }

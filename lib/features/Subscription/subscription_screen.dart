@@ -1,8 +1,9 @@
+import 'package:elbess_store/features/Auth/Presentation/Pages/signup_view.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-// Using local bundled fonts declared in pubspec.yaml
 
-enum PlanType { monthly, yearly }
+// Using local bundled fonts declared in pubspec.yaml
+import '../../../core/models/plan_type.dart';
+
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({Key? key}) : super(key: key);
@@ -38,8 +39,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   }
 
   void _continue() {
-    // Navigate to signup and pass selected plan via route arguments
-    Navigator.pushNamed(context, '/signup', arguments: selectedPlan);
+    // Navigate to signup and pass selected plan via constructor
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => SignupView(selectedPlan: selectedPlan),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+                .animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
   }
 
   @override
@@ -228,15 +242,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                         color: selectedPlan == PlanType.yearly ? Colors.white : primary)),
                     if (selectedPlan == PlanType.yearly)
                       Positioned(
-                        right: 8,
-                        top: -6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFD27A),
-                            borderRadius: BorderRadius.circular(12),
+                        right: 12,
+                        top: -14,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFD27A),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4)]
+                            ),
+                            child: Text('Save 17%', style: TextStyle(fontFamily: 'regular', fontSize: 11)),
                           ),
-                          child: Text('Save 17%', style: TextStyle(fontFamily: 'regular', fontSize: 11)),
                         ),
                       )
                   ],
@@ -417,3 +435,4 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     );
   }
 }
+  

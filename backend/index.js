@@ -141,10 +141,16 @@ const allowedOrigins = (process.env.CORS_ORIGIN || process.env.CLIENT_URL || '*'
 
 app.use((req, res, next) => {
     const origin = req.headers.origin;
+    const isLocalOrigin = typeof origin === 'string' && /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
 
     if (allowedOrigins === '*') {
         res.setHeader('Access-Control-Allow-Origin', '*');
-    } else if (origin && allowedOrigins.split(',').map((item) => item.trim()).includes(origin)) {
+    } else if (
+        origin && (
+            allowedOrigins.split(',').map((item) => item.trim()).includes(origin) ||
+            isLocalOrigin
+        )
+    ) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Vary', 'Origin');
     }
@@ -223,8 +229,9 @@ async function connectToMongoWithFallback() {
 //connect to database
 connectToMongoWithFallback()
     .then(() => {
-        const server = app.listen(3000, () => {
-            console.log('Server is running on port 3000');
+        const port = Number(process.env.PORT || 3000);
+        const server = app.listen(port, () => {
+            console.log(`Server is running on port ${port}`);
         });
 
         // Schedule daily archival and purge tasks

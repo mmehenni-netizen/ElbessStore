@@ -103,6 +103,35 @@ async function deleteCloudinaryImage(imageUrl) {
     return true;
 }
 
+// Archive delivered orders older than `retentionDays` (in days)
+async function archiveDeliveredOrders(retentionDays = 90) {
+    try {
+        const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+        const result = await Order.updateMany(
+            { delivered: true, deliveryDate: { $lte: cutoff }, archived: { $ne: true } },
+            { $set: { archived: true, deletedAt: new Date() } }
+        );
+        console.log(`archiveDeliveredOrders: archived ${result.modifiedCount} orders older than ${retentionDays} days`);
+        return result.modifiedCount;
+    } catch (err) {
+        console.error('archiveDeliveredOrders error:', err);
+        throw err;
+    }
+}
+
+// Permanently purge archived orders older than `retentionDays` (in days)
+async function purgeArchivedOrders(retentionDays = 365) {
+    try {
+        const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+        const result = await Order.deleteMany({ archived: true, deletedAt: { $lte: cutoff } });
+        console.log(`purgeArchivedOrders: purged ${result.deletedCount} archived orders older than ${retentionDays} days`);
+        return result.deletedCount;
+    } catch (err) {
+        console.error('purgeArchivedOrders error:', err);
+        throw err;
+    }
+}
+
 
 
 const app = express()
@@ -172,9 +201,26 @@ async function connectToMongoWithFallback() {
 //connect to database
 connectToMongoWithFallback()
     .then(() => {
-        app.listen(3000, () => {
+        const server = app.listen(3000, () => {
             console.log('Server is running on port 3000');
         });
+
+        // Schedule daily archival and purge tasks
+        const archiveRetentionDays = Number(process.env.ARCHIVE_RETENTION_DAYS ?? 90);
+        const purgeRetentionDays = Number(process.env.PURGE_RETENTION_DAYS ?? 365);
+
+        // Run once at startup (non-blocking)
+        archiveDeliveredOrders(archiveRetentionDays).catch((err) => console.error(err));
+        purgeArchivedOrders(purgeRetentionDays).catch((err) => console.error(err));
+
+        // Schedule to run daily
+        const dayMs = 24 * 60 * 60 * 1000;
+        setInterval(() => {
+            archiveDeliveredOrders(archiveRetentionDays).catch((err) => console.error(err));
+            purgeArchivedOrders(purgeRetentionDays).catch((err) => console.error(err));
+        }, dayMs);
+
+        return server;
     })
     .catch((err) => {
         console.error('MongoDB connection error:', err);
@@ -860,5 +906,29 @@ app.post("/UpdateOrderStatus", async (req, res) => {
             message: "Error updating order status",
             error: error.message
         });
+    }
+});
+
+// Admin endpoint: archive delivered orders older than retentionDays (days)
+app.post('/Admin/ArchiveDelivered', async (req, res) => {
+    try {
+        const retentionDays = Number(req.body.retentionDays ?? req.query.retentionDays ?? 90);
+        const count = await archiveDeliveredOrders(retentionDays);
+        return res.json({ success: true, archived: count });
+    } catch (err) {
+        console.error('Admin ArchiveDelivered error:', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// Admin endpoint: purge archived orders older than retentionDays (days)
+app.post('/Admin/PurgeArchived', async (req, res) => {
+    try {
+        const retentionDays = Number(req.body.retentionDays ?? req.query.retentionDays ?? 365);
+        const count = await purgeArchivedOrders(retentionDays);
+        return res.json({ success: true, purged: count });
+    } catch (err) {
+        console.error('Admin PurgeArchived error:', err);
+        return res.status(500).json({ success: false, message: err.message });
     }
 });

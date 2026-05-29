@@ -2,6 +2,8 @@
 import 'dart:async';
 
 import 'package:elbess_store/features/Options_view/Presentation/options_view.dart';
+import 'package:elbess_store/core/utils/pref_helpers.dart';
+import 'package:elbess_store/root.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
@@ -27,16 +29,29 @@ class _SplashbodyState extends State<Splashbody> {
         _fadeOut = true;
       });
     });
-
     Timer(const Duration(milliseconds: 3600), () {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
+      _goNext();
+    });
+  }
+
+  Future<void> _goNext() async {
+    final token = await PrefHelpers.getToken();
+    final storeId = await PrefHelpers.getStoreId();
+
+    if (!mounted) return;
+
+    if ((token != null && token.isNotEmpty) || (storeId != null && storeId.isNotEmpty)) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const Root()),
+      );
+    } else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const OptionsView()),
       );
-    });
+    }
   }
 
   @override

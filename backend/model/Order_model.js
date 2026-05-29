@@ -118,6 +118,15 @@ const orderSchema = new Schema({
     type: Date,
     default: null,
   },
+  // archival / retention fields
+  archived: {
+    type: Boolean,
+    default: false,
+  },
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
 });
 
 

@@ -8,6 +8,8 @@ import 'package:elbess_store/features/Inventory/Widgets/inventory_card.dart';
 import 'package:elbess_store/features/Orders/Widgets/customordertype.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:elbess_store/models/inventory_filter_model.dart';
+import 'package:elbess_store/widgets/elbess_filter_button.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 class Inventorybody extends StatefulWidget {
@@ -34,6 +36,7 @@ class _InventorybodyState extends State<Inventorybody> {
   "SHOES | BAGS",
 ];
   final ProductRepo productRepo = ProductRepo();
+  InventoryFilterModel _activeFilter = const InventoryFilterModel();
 
   @override
   void initState() {
@@ -132,19 +135,85 @@ class _InventorybodyState extends State<Inventorybody> {
   }
 
   List<ProductModel> _filterProducts(List<ProductModel> products) {
-    final selectedType = type[selectedIndex];
-    final filteredByType = selectedType == 'All'
-        ? products
-        : products.where((product) => product.category == selectedType).toList();
+    var list = products;
 
-    if (_searchQuery.trim().isEmpty) {
-      return filteredByType;
+    // category filter (type chips still control selectedIndex)
+    final selectedType = type[selectedIndex];
+    if (selectedType != 'All') {
+      list = list.where((p) => p.category == selectedType).toList();
     }
 
-    final query = _searchQuery.trim().toLowerCase();
-    return filteredByType
-        .where((product) => product.name.toLowerCase().contains(query))
-        .toList();
+    // apply inventory filter model
+    // price range
+    list = list.where((p) => p.price >= _activeFilter.priceRange.start && p.price <= _activeFilter.priceRange.end).toList();
+
+    // stock status (multi-select)
+    if (_activeFilter.stockStatus.isNotEmpty) {
+      list = list.where((p) {
+        final total = p.totalQuantity;
+        bool ok = false;
+        for (final s in _activeFilter.stockStatus) {
+          if (s == 'In Stock' && total > 0) ok = true;
+          if (s == 'Low Stock' && total > 0 && total < 10) ok = true;
+          if (s == 'Out of Stock' && total == 0) ok = true;
+        }
+        return ok;
+      }).toList();
+    }
+
+    // sizes
+    if (_activeFilter.sizes.isNotEmpty) {
+      list = list.where((p) {
+        final sizes = p.sizeQuantities.map((e) => e.size).toList();
+        return _activeFilter.sizes.any((s) => sizes.contains(s));
+      }).toList();
+    }
+
+    // category selection inside sheet
+    if ((_activeFilter.category ?? '').isNotEmpty) {
+      list = list.where((p) => p.category == _activeFilter.category).toList();
+    }
+
+    // active only
+    if (_activeFilter.activeOnly) {
+      // product model doesn't have an 'active' flag in the model; skip unless available
+    }
+
+    // search query
+    if (_searchQuery.trim().isNotEmpty) {
+      final query = _searchQuery.trim().toLowerCase();
+      list = list.where((product) => product.name.toLowerCase().contains(query)).toList();
+    }
+
+    // sorting
+    switch (_activeFilter.sortBy) {
+      case 'Name A → Z':
+        list.sort((a, b) => a.name.compareTo(b.name));
+        break;
+      case 'Name Z → A':
+        list.sort((a, b) => b.name.compareTo(a.name));
+        break;
+      case 'Price: Low to High':
+        list.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Price: High to Low':
+        list.sort((a, b) => b.price.compareTo(a.price));
+        break;
+      case 'Stock: Low to High':
+        list.sort((a, b) => a.totalQuantity.compareTo(b.totalQuantity));
+        break;
+      case 'Stock: High to Low':
+        list.sort((a, b) => b.totalQuantity.compareTo(a.totalQuantity));
+        break;
+      case 'Recently Added':
+        // no createdAt available; fallback to id ordering
+        list = list.reversed.toList();
+        break;
+      default:
+        break;
+    }
+
+    return list;
   }
 
   List<SizeInfo> _buildSizes(ProductModel product) {
@@ -165,13 +234,28 @@ class _InventorybodyState extends State<Inventorybody> {
             style: TextStyle(fontFamily: "semi", fontSize: ds * 2.3),
           ),
           Gap(ds * 3),
-          Customsearchfield(
-            controller: _searchController,
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-            },
+          Row(
+            children: [
+              Expanded(
+                child: Customsearchfield(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              ElbessFilterButton(
+                currentFilter: _activeFilter,
+                onApply: (f) {
+                  setState(() {
+                    _activeFilter = f;
+                  });
+                },
+              ),
+            ],
           ),
           Gap(ds * 3),
           SingleChildScrollView(

@@ -39,6 +39,7 @@ class _EditProductViewState extends State<EditProductView> {
   final _totalQuantityController = TextEditingController();
 
   late final Map<String, TextEditingController> _sizeControllers;
+  final TextEditingController _customSizeController = TextEditingController();
   final Set<String> _selectedSizes = {};
 
   ProductModel? _product;
@@ -55,6 +56,10 @@ class _EditProductViewState extends State<EditProductView> {
     _sizeControllers = {
       for (final size in _sizes) size: TextEditingController(),
     };
+    // listen for quantity changes to keep total quantity in sync
+    for (final controller in _sizeControllers.values) {
+      controller.addListener(_recalculateTotal);
+    }
     _loadProduct();
   }
 
@@ -64,10 +69,39 @@ class _EditProductViewState extends State<EditProductView> {
     _descriptionController.dispose();
     _priceController.dispose();
     _totalQuantityController.dispose();
+    _customSizeController.dispose();
     for (final controller in _sizeControllers.values) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  void _recalculateTotal() {
+    int total = 0;
+    for (final size in _selectedSizes) {
+      final text = _sizeControllers[size]?.text.trim() ?? '';
+      final qty = int.tryParse(text) ?? 0;
+      total += qty;
+    }
+    // only update if different to avoid unnecessary rebuilds
+    if ((_totalQuantityController.text.isEmpty && total > 0) || _totalQuantityController.text != total.toString()) {
+      _totalQuantityController.text = total.toString();
+    }
+  }
+
+  void _addCustomSize() {
+    final label = _customSizeController.text.trim().toUpperCase();
+    if (label.isEmpty) return _showMessage('Enter a size label');
+    if (_sizeControllers.containsKey(label)) return _showMessage('Size already exists');
+
+    final controller = TextEditingController();
+    controller.addListener(_recalculateTotal);
+    setState(() {
+      _sizeControllers[label] = controller;
+      _selectedSizes.add(label);
+      _customSizeController.clear();
+    });
+    _recalculateTotal();
   }
 
   Future<void> _loadProduct() async {
@@ -97,6 +131,9 @@ class _EditProductViewState extends State<EditProductView> {
           _sizeControllers[item.size]!.text = item.quantity.toString();
         }
       }
+
+      // ensure total reflects loaded sizes
+      _recalculateTotal();
 
       setState(() {
         _isLoading = false;
@@ -191,7 +228,7 @@ class _EditProductViewState extends State<EditProductView> {
           File(_pickedImagePath!),
           width: double.infinity,
           height: 180,
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
         ),
       );
     }
@@ -204,7 +241,7 @@ class _EditProductViewState extends State<EditProductView> {
           currentImage,
           width: double.infinity,
           height: 180,
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
         ),
       );
     }
@@ -232,6 +269,7 @@ class _EditProductViewState extends State<EditProductView> {
             _selectedSizes.add(size);
             _sizeControllers[size]!.text = _sizeControllers[size]!.text.isEmpty ? '1' : _sizeControllers[size]!.text;
           }
+          _recalculateTotal();
         });
       },
       borderRadius: BorderRadius.circular(999),
@@ -403,23 +441,57 @@ class _EditProductViewState extends State<EditProductView> {
                   runSpacing: ds * 0.8,
                   children: _sizes.map((size) => _buildSizeChip(size, ds)).toList(),
                 ),
-                Gap(ds),
-                ..._selectedSizes.map((size) {
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: ds * 0.8),
-                    child: TextFormField(
-                      controller: _sizeControllers[size],
-                      keyboardType: TextInputType.number,
-                      decoration: _inputDecoration('Quantity for size $size'),
-                      validator: (value) {
-                        if (!_selectedSizes.contains(size)) return null;
-                        final qty = int.tryParse(value?.trim() ?? '');
-                        if (qty == null || qty <= 0) {
-                          return 'Enter a valid quantity';
-                        }
-                        return null;
-                      },
+                Gap(ds * 0.8),
+                // add custom size input
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _customSizeController,
+                        decoration: _inputDecoration('Add custom size (e.g. 30, XS)'),
+                      ),
                     ),
+                    Gap(ds * 0.6),
+                    ElevatedButton(
+                      onPressed: _addCustomSize,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF8B4513),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: EdgeInsets.symmetric(horizontal: ds * 1.2, vertical: ds * 0.9),
+                      ),
+                      child: const Text('Add', style: TextStyle(fontFamily: 'semi')),
+                    ),
+                  ],
+                ),
+                Gap(ds),
+                // responsive layout for size quantity inputs
+                LayoutBuilder(builder: (context, constraints) {
+                  final columns = constraints.maxWidth > 600 ? 2 : 1;
+                  final itemWidth = columns == 1 ? double.infinity : (constraints.maxWidth / 2) - (ds * 1.2);
+                  return Wrap(
+                    spacing: ds,
+                    runSpacing: ds,
+                    children: _selectedSizes.map((size) {
+                      return SizedBox(
+                        width: itemWidth,
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: ds * 0.8),
+                          child: TextFormField(
+                            controller: _sizeControllers[size],
+                            keyboardType: TextInputType.number,
+                            decoration: _inputDecoration('Quantity for size $size'),
+                            validator: (value) {
+                              if (!_selectedSizes.contains(size)) return null;
+                              final qty = int.tryParse(value?.trim() ?? '');
+                              if (qty == null || qty <= 0) {
+                                return 'Enter a valid quantity';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   );
                 }),
                 Gap(ds * 1.6),

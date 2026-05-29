@@ -6,6 +6,7 @@ import 'package:elbess_store/features/Orders/Widgets/ordercard.dart';
 import 'package:elbess_store/features/Orders/data/orderRepo.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'elbess_filter_bar.dart';
 
 class Ordersbody extends StatefulWidget {
   const Ordersbody({super.key});
@@ -17,8 +18,12 @@ class Ordersbody extends StatefulWidget {
 class _OrdersbodyState extends State<Ordersbody> {
   int selectedIndex = 0;
   final List<String> type = ["All", "confirmed", "prepared", "shipped", "delivered", "canceled"];
+  int selectedTimeIndex = 0;
+  final List<String> timeFilters = ["All", "Today", "Last 7 days", "Last 30 days"];
   final OrderRepo _orderRepo = OrderRepo();
   final List<Map<String, String>> _orders = [];
+  DateTime? _rangeStart;
+  DateTime? _rangeEnd;
 
   final List<String> _statusOptions = [
     "confirmed",
@@ -32,45 +37,6 @@ class _OrdersbodyState extends State<Ordersbody> {
   void initState() {
     super.initState();
     getOrders();
-  }
-
-  String _statusLabel(String value) {
-    if (value.isEmpty) return value;
-    return value[0].toUpperCase() + value.substring(1).toLowerCase();
-  }
-
-  Color _statusColor(String value) {
-    switch (value.toLowerCase()) {
-      case 'confirmed':
-        return const Color(0xFF7B8794);
-      case 'prepared':
-        return const Color(0xFFE67E22);
-      case 'shipped':
-        return const Color(0xFF27AE60);
-      case 'delivered':
-        return const Color(0xFFE74C3C);
-      case 'canceled':
-        return const Color(0xFFB03A2E);
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _statusIcon(String value) {
-    switch (value.toLowerCase()) {
-      case 'confirmed':
-        return Icons.verified_outlined;
-      case 'prepared':
-        return Icons.inventory_2_outlined;
-      case 'shipped':
-        return Icons.local_shipping_outlined;
-      case 'delivered':
-        return Icons.task_alt_outlined;
-      case 'canceled':
-        return Icons.cancel_outlined;
-      default:
-        return Icons.circle_outlined;
-    }
   }
 
   Future<void> _showStatusSelector(int orderIndex) async {
@@ -199,6 +165,46 @@ class _OrdersbodyState extends State<Ordersbody> {
       );
     }
   }
+
+  String _statusLabel(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1).toLowerCase();
+  }
+
+    Color _statusColor(String value) {
+      switch (value.toLowerCase()) {
+        case 'confirmed':
+          return const Color(0xFF7B8794);
+        case 'prepared':
+          return const Color(0xFFE67E22);
+        case 'shipped':
+          return const Color(0xFF27AE60);
+        case 'delivered':
+          return const Color(0xFFE74C3C);
+        case 'canceled':
+          return const Color(0xFFB03A2E);
+        default:
+          return Colors.grey;
+      }
+    }
+
+    IconData _statusIcon(String value) {
+      switch (value.toLowerCase()) {
+        case 'confirmed':
+          return Icons.verified_outlined;
+        case 'prepared':
+          return Icons.inventory_2_outlined;
+        case 'shipped':
+          return Icons.local_shipping_outlined;
+        case 'delivered':
+          return Icons.task_alt_outlined;
+        case 'canceled':
+          return Icons.cancel_outlined;
+        default:
+          return Icons.circle_outlined;
+      }
+    }
+    
   Future<void> getOrders() async {
     final id = await PrefHelpers.getStoreId();
     if (id == null || id.trim().isEmpty) {
@@ -250,7 +256,21 @@ class _OrdersbodyState extends State<Ordersbody> {
       "customer": contactText,
       "colors": order.products.isEmpty ? 'no color' : order.products.first.color,
       "location": locationText,
+      // time: prefer confirmationDate, then deliveryDate, then shippingDate
+      "timeRaw": (order.confirmationDate ?? order.deliveryDate ?? order.shippingDate)?.toIso8601String() ?? '',
+      "time": (order.confirmationDate ?? order.deliveryDate ?? order.shippingDate)?.toLocal().toString().split('.').first ?? '',
     };
+  }
+
+  String _formatDate(DateTime d) {
+    final y = d.year.toString();
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '$y-$m-$day';
+  }
+
+  bool _hasActiveFilters() {
+    return (selectedTimeIndex != 0) || (_rangeStart != null && _rangeEnd != null);
   }
   @override
   Widget build(BuildContext context) {
@@ -258,9 +278,55 @@ class _OrdersbodyState extends State<Ordersbody> {
 
         final ds = SizeConfig.defaultSize!;
     final selectedType = type[selectedIndex];
-    final visibleOrders = selectedType == "All"
+    final selectedTime = timeFilters[selectedTimeIndex];
+
+    List<Map<String, String>> filtered = selectedType == "All"
         ? _orders
         : _orders.where((order) => order["status"] == selectedType).toList();
+
+    if (selectedTime != "All") {
+      final now = DateTime.now();
+      DateTime cutoff = now;
+      if (selectedTime == 'Today') {
+        cutoff = DateTime(now.year, now.month, now.day);
+      } else if (selectedTime == 'Last 7 days') {
+        cutoff = now.subtract(Duration(days: 7));
+      } else if (selectedTime == 'Last 30 days') {
+        cutoff = now.subtract(Duration(days: 30));
+      }
+
+      filtered = filtered.where((order) {
+        final raw = order['timeRaw'] ?? '';
+        if (raw.isEmpty) return false;
+        try {
+          final dt = DateTime.parse(raw).toLocal();
+          if (selectedTime == 'Today') {
+            return dt.year == now.year && dt.month == now.month && dt.day == now.day;
+          }
+          return dt.isAfter(cutoff) || dt.isAtSameMomentAs(cutoff);
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+    }
+
+    // apply custom date range filter if set
+    if (_rangeStart != null && _rangeEnd != null) {
+      final start = DateTime(_rangeStart!.year, _rangeStart!.month, _rangeStart!.day);
+      final end = DateTime(_rangeEnd!.year, _rangeEnd!.month, _rangeEnd!.day, 23, 59, 59);
+      filtered = filtered.where((order) {
+        final raw = order['timeRaw'] ?? '';
+        if (raw.isEmpty) return false;
+        try {
+          final dt = DateTime.parse(raw).toLocal();
+          return (dt.isAfter(start) || dt.isAtSameMomentAs(start)) && (dt.isBefore(end) || dt.isAtSameMomentAs(end));
+        } catch (_) {
+          return false;
+        }
+      }).toList();
+    }
+
+    final visibleOrders = filtered;
 
     return SingleChildScrollView(
       physics: AlwaysScrollableScrollPhysics(),
@@ -272,31 +338,59 @@ class _OrdersbodyState extends State<Ordersbody> {
               SizedBox(height: ds * 5),
             Text("Manage Orders", style: TextStyle(fontFamily: "semi",fontSize: ds * 2.3)),
             Gap(ds * 3),
-            SingleChildScrollView(
-              clipBehavior: Clip.none,
-              scrollDirection: Axis.horizontal,
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: ds * 0.5),
-                child: Row(
-                children: List.generate(type.length, (index) {
-                  final isSelected = selectedIndex == index;
-                  return Padding(
-                    padding: EdgeInsets.only(right: ds),
-                    child: Customordertype(
-                      label: type[index],
-                      isSelected: isSelected,
-                      onTap: () {
-                        setState(() {
-                          selectedIndex = index;
-                        });
-                      },
-                    ),
-                  );
-                }),
-              ),
-              ),
+            // Elbess branded filter bar replaces older chips + filter button
+            ElbessFilterBar(
+              onFilterChanged: (status, period) {
+                setState(() {
+                  if (status == null || status == 'All') {
+                    selectedIndex = 0;
+                  } else {
+                    final idx = type.indexOf(status);
+                    selectedIndex = idx >= 0 ? idx : 0;
+                  }
+
+                  if (period == null) {
+                    selectedTimeIndex = 0;
+                  } else if (period == 'Today') {
+                    selectedTimeIndex = 1;
+                  } else if (period == 'Last 7 days') {
+                    selectedTimeIndex = 2;
+                  } else if (period == 'Last 30 days') {
+                    selectedTimeIndex = 3;
+                  } else {
+                    selectedTimeIndex = 0;
+                  }
+                });
+              },
             ),
-            Gap(ds * 2),
+              Gap(ds * 2),
+              // show selected range and clear button
+              if (_rangeStart != null && _rangeEnd != null)
+                Padding(
+                  padding: EdgeInsets.only(bottom: ds * 1.2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'From ${_formatDate(_rangeStart!)} to ${_formatDate(_rangeEnd!)}',
+                          style: TextStyle(fontFamily: 'regular', fontSize: ds * 1.2, color: Colors.black87),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () => setState(() { _rangeStart = null; _rangeEnd = null; }),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: ds, vertical: ds * 0.6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Text('Clear', style: TextStyle(fontFamily: 'semi', fontSize: ds * 1.1)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
             ...List.generate(visibleOrders.length, (index) {
               final order = visibleOrders[index];
@@ -312,6 +406,7 @@ class _OrdersbodyState extends State<Ordersbody> {
                   customer: order["customer"]!,
                   colors: order["colors"]!,
                   location: order["location"]!,
+                  time: order["time"] ?? '',
                   onUpdateStatus: () => _showStatusSelector(orderIndex),
                 ),
               );

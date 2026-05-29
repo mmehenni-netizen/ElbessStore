@@ -13,6 +13,7 @@ class Ordercard extends StatelessWidget {
   final String customer;
   final String colors;
   final String location;
+  final String? time;
   final VoidCallback? onUpdateStatus;
 
   const Ordercard({
@@ -25,6 +26,7 @@ class Ordercard extends StatelessWidget {
     required this.customer,
     required this.colors,
     required this.location,
+    this.time,
     this.onUpdateStatus,
   });
 
@@ -68,24 +70,45 @@ class Ordercard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  "#$orderNumber",
-                  style: TextStyle(fontSize: ds * 1.4, fontFamily: "semi", color: Colors.grey.shade500),
-                ),
-                Gap(ds),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: ds * 1.2, vertical: ds * 0.45),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(ds * 2),
-                    border: Border.all(color: statusColor.withOpacity(0.35), width: 1),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          "#$orderNumber",
+                          style: TextStyle(fontSize: ds * 1.4, fontFamily: "semi", color: Colors.grey.shade500),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      if (time != null && time!.isNotEmpty) ...[
+                        Gap(ds * 0.6),
+                        Flexible(
+                          child: Text(
+                            time!,
+                            style: TextStyle(fontSize: ds * 1.0, fontFamily: "regular", color: Colors.grey.shade400),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                      Gap(ds),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: ds * 1.2, vertical: ds * 0.45),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(ds * 2),
+                          border: Border.all(color: statusColor.withOpacity(0.35), width: 1),
+                        ),
+                        child: Text(
+                          _statusLabel(),
+                          style: TextStyle(fontSize: ds * 1.15, fontFamily: "semi", color: statusColor),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    _statusLabel(),
-                    style: TextStyle(fontSize: ds * 1.15, fontFamily: "semi", color: statusColor),
-                  ),
                 ),
-                Spacer(),
+                const SizedBox(width: 8),
                 Text(
                   price,
                   style: TextStyle(fontSize: ds * 1.6, fontFamily: "semi", color: AppColors.primary),

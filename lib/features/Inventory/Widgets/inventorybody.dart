@@ -2,6 +2,7 @@ import 'package:elbess_store/core/utils/pref_helpers.dart';
 import 'package:elbess_store/core/utils/size_config.dart';
 import 'package:elbess_store/features/Add/data/ProductModel.dart';
 import 'package:elbess_store/features/Add/data/Product_repo.dart';
+import 'package:elbess_store/features/Inventory/Presentation/edit_product_view.dart';
 import 'package:elbess_store/features/Inventory/Widgets/customsearchfield.dart';
 import 'package:elbess_store/features/Inventory/Widgets/inventory_card.dart';
 import 'package:elbess_store/features/Orders/Widgets/customordertype.dart';
@@ -20,7 +21,7 @@ class _InventorybodyState extends State<Inventorybody> {
   int selectedIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  late final Future<List<ProductModel>> _inventoryFuture;
+  late Future<List<ProductModel>> _inventoryFuture;
   final List<String> type =  [
     "All",
   "T-SHIRTS",
@@ -53,6 +54,81 @@ class _InventorybodyState extends State<Inventorybody> {
     }
 
     return productRepo.getInventory(storeId.trim());
+  }
+
+  void _reloadInventory() {
+    setState(() {
+      _inventoryFuture = _loadInventory();
+    });
+  }
+
+  Future<void> _editProduct(ProductModel product) async {
+    if (product.id == null || product.id!.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This product cannot be edited right now')),
+      );
+      return;
+    }
+
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProductView(productId: product.id!),
+      ),
+    );
+
+    if (updated == true) {
+      _reloadInventory();
+    }
+  }
+
+  Future<void> _deleteProduct(ProductModel product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: const Text('Delete product?'),
+          content: Text('This will remove "${product.name}" from your inventory.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || product.id == null) {
+      return;
+    }
+
+    try {
+      final deleted = await productRepo.deleteProduct(product.id!);
+      if (!mounted) return;
+      if (deleted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product.name} deleted')),
+        );
+        _reloadInventory();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not delete product')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   List<ProductModel> _filterProducts(List<ProductModel> products) {
@@ -192,6 +268,8 @@ class _InventorybodyState extends State<Inventorybody> {
               imagePath: product.fullImageUrl,
               total: product.totalQuantity,
               sizes: _buildSizes(product),
+              onEdit: () => _editProduct(product),
+              onDelete: () => _deleteProduct(product),
             ),
           );
         }, childCount: inventory.length),

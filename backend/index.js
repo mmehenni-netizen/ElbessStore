@@ -14,6 +14,7 @@ const Store  = require('./model/Store_model.js')
 const Product  = require('./model/Product_model.js')
 const { sendVerificationEmail } = require('./utils/sendEmail.js'); 
 const { getAlreadyVerifiedPage, getSuccessPage, getErrorPage } = require('./templates/email-verification');
+const { getProductById, updateProductById, deleteProductById } = require('./repo/inventoryRepo.js');
 
 const isCloudinaryConfigured = Boolean(
     process.env.CLOUDINARY_CLOUD_NAME &&
@@ -511,60 +512,82 @@ app.post("/AddProduct", upload.single('Image'), async (req, res) => {
     }
 });
 
+app.post('/GetProduct', async (req, res) => {
+    try {
+        const productId = req.body.id ?? req.body.Id ?? req.body.productId ?? req.body.ProductId;
+        if (!productId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Product id is required',
+            });
+        }
+
+        const product = await getProductById(productId);
+        if (!product) {
+            return res.json({
+                success: false,
+                message: 'Product not found',
+            });
+        }
+
+        return res.json({
+            success: true,
+            product,
+        });
+    } catch (error) {
+        console.error('GetProduct error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching product',
+        });
+    }
+});
+
+app.post('/EditProduct', upload.single('Image'), async (req, res) => {
+    try {
+        const productId = req.body.id ?? req.body.Id ?? req.body.productId ?? req.body.ProductId;
+        if (!productId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Product id is required',
+            });
+        }
+
+        const updatedProduct = await updateProductById(productId, req.body, req.file);
+        if (!updatedProduct) {
+            return res.json({
+                success: false,
+                message: 'Product not found',
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Product updated successfully',
+            product: updatedProduct,
+        });
+    } catch (error) {
+        console.error('EditProduct error:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Error updating product',
+        });
+    }
+});
+
 
 app.delete("/DeleteProduct", async (req, res) => {
     try {
-        const productId = req.body.id ?? req.body.Id;
-        const product = await Product.findById(productId);
-        
-        if (!product) {
+        const productId = req.body.id ?? req.body.Id ?? req.body.productId ?? req.body.ProductId;
+        const deletion = await deleteProductById(productId, uploadsDir);
+
+        if (!deletion.deleted) {
             return res.json({
                 deletion: false,
-                message: "Product not found"
+                message: deletion.message || 'Product not found'
             });
         }
-        
-        const storeId = product.store;
 
-        const updatedStore = await Store.findByIdAndUpdate(
-            storeId,
-            { $pull: { products: productId } },
-            { new: true }
-        );
-        
-        const deletedProduct = await Product.findByIdAndDelete(productId);
-        
-        if (product.imageUrl && Array.isArray(product.imageUrl)) {
-            await Promise.all(product.imageUrl.map(async (storedPath) => {
-                if (!storedPath) {
-                    return;
-                }
-
-                if (typeof storedPath === 'string' && storedPath.startsWith('http')) {
-                    try {
-                        const deleted = await deleteCloudinaryImage(storedPath);
-                        if (deleted) {
-                            console.log('✅ Cloudinary image deleted:', storedPath);
-                            return;
-                        }
-                    } catch (deleteError) {
-                        console.log('⚠️ Error deleting Cloudinary image:', deleteError);
-                    }
-                }
-
-                const imageFilePath = storedPath.startsWith('/uploads/')
-                    ? path.join(uploadsDir, path.basename(storedPath))
-                    : path.isAbsolute(storedPath)
-                        ? storedPath
-                        : path.join(__dirname, storedPath);
-
-                fs.unlink(imageFilePath, (err) => {
-                    if (err) console.log("⚠️ Error deleting image:", err);
-                    else console.log("✅ Image deleted:", imageFilePath);
-                });
-            }));
-        }
-        
         res.json({
             deletion: true,
             message: "Product deleted successfully from Product collection and Store array",

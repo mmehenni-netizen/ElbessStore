@@ -40,6 +40,7 @@ class SizeQuantityModel {
 class ProductModel {
 	final String? id;
 	final String name;
+	final String description;
 	final double price;
 	final double rating;
 	final int totalRates;
@@ -75,6 +76,7 @@ class ProductModel {
 	const ProductModel({
 		this.id,
 		required this.name,
+		required this.description,
 		required this.price,
 		required this.rating,
 		required this.totalRates,
@@ -103,6 +105,7 @@ class ProductModel {
 		return ProductModel(
 			id: json['_id']?.toString(),
 			name: _asString(json['name'] ?? json['Name']),
+			description: _asString(json['description'] ?? json['Description']),
 			price: _asDouble(json['price'] ?? json['Price']),
 			rating: _asDouble(json['rating'] ?? json['Rating']),
 			totalRates: _asInt(json['totalRates']),
@@ -120,6 +123,7 @@ class ProductModel {
 		return {
 			if (id != null) '_id': id,
 			'name': name,
+			'description': description,
 			'price': price,
 			'rating': rating,
 			'totalRates': totalRates,

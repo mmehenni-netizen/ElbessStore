@@ -8,6 +8,8 @@ class InventoryCard extends StatelessWidget {
   final String imagePath;
   final int total;
   final List<SizeInfo> sizes;
+  final VoidCallback? onEdit;
+  final Future<void> Function()? onDelete;
 
   const InventoryCard({
     super.key,
@@ -16,6 +18,8 @@ class InventoryCard extends StatelessWidget {
     required this.imagePath,
     required this.total,
     required this.sizes,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -65,15 +69,32 @@ class InventoryCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      price,
-                      style: TextStyle(
-                        fontFamily: 'medium',
-                        fontSize: ds * 1.3,
-                        color: const Color(0xFF8A5A44),
-                      ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert_rounded, color: Color(0xFF8A5A44)),
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          onEdit?.call();
+                          return;
+                        }
+
+                        if (value == 'delete' && onDelete != null) {
+                          await onDelete!();
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      ],
                     ),
                   ],
+                ),
+                Text(
+                  price,
+                  style: TextStyle(
+                    fontFamily: 'medium',
+                    fontSize: ds * 1.3,
+                    color: const Color(0xFF8A5A44),
+                  ),
                 ),
                 Gap(ds * 1.2),
                 Row(

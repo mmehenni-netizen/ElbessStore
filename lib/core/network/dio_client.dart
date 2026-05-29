@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart' show BaseOptions, Dio, InterceptorsWrapper;
+import 'package:dio/dio.dart' show BaseOptions, Dio, InterceptorsWrapper, LogInterceptor;
 import 'package:elbess_store/core/utils/pref_helpers.dart';
 import 'package:flutter/foundation.dart';
 
@@ -24,6 +24,8 @@ class DioClient {
         },
       ),
     );
+    // Add a log interceptor to debug request/response bodies and URLs
+    _dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
   }
   Dio get dio => _dio;
 

@@ -1,6 +1,7 @@
 import 'package:elbess_store/core/constants/optionsbtn.dart';
 import 'package:elbess_store/core/utils/size_config.dart';
 import 'package:elbess_store/features/Auth/Presentation/Pages/login_view.dart';
+import 'package:elbess_store/features/Subscription/subscription_screen.dart';
 import 'package:elbess_store/features/Auth/Presentation/Pages/signup_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -35,10 +36,10 @@ class _OptionsBodyState extends State<OptionsBody> {
               Gap(sh * 0.04),
               Text("Build your store",style: TextStyle(fontSize: sw * 0.06,fontFamily: "bold"),),
            Gap(sh * 0.08),
-            GestureDetector(
+              GestureDetector(
               onTap: () {
                 Navigator.push(context, PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => const SignupView(),
+                  pageBuilder: (context, animation, secondaryAnimation) => const SubscriptionScreen(),
                   transitionsBuilder: (context, animation, secondaryAnimation, child) {
                     return SlideTransition(
                       position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)

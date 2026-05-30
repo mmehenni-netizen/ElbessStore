@@ -424,9 +424,12 @@ app.post("/SignUp", upload.single('Logo'), async (req, res) => {
 
         await newStore.save();
 
-        void sendVerificationEmail(address, verificationToken).catch((emailError) => {
-            console.error('Verification email failed after signup:', emailError);
-        });
+         try {
+            const emailResult = await sendVerificationEmail(address, verificationToken);
+            console.log("Email result:", emailResult);
+        } catch (emailError) {
+            console.error('Verification email failed:', emailError);
+        }
 
         return res.json({
             creation: true,

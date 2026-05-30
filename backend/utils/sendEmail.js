@@ -12,7 +12,7 @@ const sendVerificationEmail = async (email, token) => {
                 "api-key": process.env.BREVO_API_KEY,
             },
             body: JSON.stringify({
-                sender: { name: "elbess store", email: "mehennimohamed179@gmail.com" },
+               sender: { name: "elbess store", email: "mehennimohamed095@gmail.com" },
                 to: [{ email: email }],
                 subject: "Verify Your Email Address - elbess store",
                 htmlContent: `

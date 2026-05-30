@@ -8,6 +8,7 @@ import 'package:elbess_store/features/Auth/Presentation/Pages/email_verification
 import 'package:elbess_store/features/Auth/Presentation/Pages/login_view.dart';
 import '../../../core/models/plan_type.dart';
 import 'package:elbess_store/features/Auth/data/auth_repo.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart' show Gap;
 import 'package:image_picker/image_picker.dart';
@@ -60,6 +61,7 @@ class _SignupbodyState extends State<Signupbody> {
         location: _locationController.text,
         description: _descriptionController.text,
         logoPath: _selectedLogoPath,
+        logoBytes: _selectedLogoBytes,
       );
 
       if (!mounted) {
@@ -122,7 +124,7 @@ class _SignupbodyState extends State<Signupbody> {
       }
 
       setState(() {
-        _selectedLogoPath = file.path;
+        _selectedLogoPath = kIsWeb ? null : file.path;
         _selectedLogoBytes = bytes;
       });
     } catch (e) {

@@ -217,6 +217,12 @@ class _OrdersbodyState extends State<Ordersbody> {
         return;
       }
 
+      res.sort((left, right) {
+        final leftTime = left.confirmationDate ?? left.deliveryDate ?? left.shippingDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final rightTime = right.confirmationDate ?? right.deliveryDate ?? right.shippingDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return rightTime.compareTo(leftTime);
+      });
+
       setState(() {
         _orders
           ..clear()

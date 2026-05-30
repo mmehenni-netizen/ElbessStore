@@ -4,6 +4,8 @@ import 'package:elbess_store/core/network/api_exception.dart';
 import 'package:elbess_store/core/network/api_service.dart';
 import 'package:elbess_store/core/utils/pref_helpers.dart';
 import 'package:elbess_store/features/Auth/data/storemodel.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
 
 class AuthRepo {
   final ApiService _apiService = ApiService();
@@ -67,16 +69,25 @@ class AuthRepo {
     required String location,
     required String description,
     String? logoPath,
+    Uint8List? logoBytes,
   }) async {
     try {
+      final hasLogoBytes = logoBytes != null && logoBytes.isNotEmpty;
+      final hasLogoPath = logoPath != null && logoPath.trim().isNotEmpty;
+
       final body = FormData.fromMap({
         'address': email.trim().toLowerCase(),
         'password': password,
         'name': name.trim(),
         'location': location.trim(),
         'description': description.trim(),
-        if (logoPath != null && logoPath.trim().isNotEmpty)
-          'Logo': await MultipartFile.fromFile(logoPath.trim()),
+        if (hasLogoBytes)
+          'Logo': MultipartFile.fromBytes(
+            logoBytes!,
+            filename: 'logo.png',
+          )
+        else if (hasLogoPath)
+          'Logo': await MultipartFile.fromFile(logoPath!.trim()),
       });
 
       final response = await _apiService.postMultipart('/SignUp', body);

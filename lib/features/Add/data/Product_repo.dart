@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:elbess_store/core/network/api_service.dart';
@@ -20,12 +21,16 @@ class ProductRepo {
     int? totalRates,
     String? imageUrl,
     String? imagePath,
+    Uint8List? imageBytes,
   }) async {
     try {
       final storeId = await PrefHelpers.getStoreId();
       if (storeId == null || storeId.trim().isEmpty) {
         throw Exception('Missing store id. Please login again.');
       }
+
+      final hasImageBytes = imageBytes != null && imageBytes.isNotEmpty;
+      final hasImagePath = imagePath != null && imagePath.trim().isNotEmpty;
 
       final formData = FormData.fromMap({
         'name': name.trim(),
@@ -43,8 +48,13 @@ class ProductRepo {
         if (rating != null) 'rating': rating.toString(),
         if (totalRates != null) 'totalRates': totalRates.toString(),
         if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
-        if (imagePath != null && imagePath.trim().isNotEmpty)
-          'Image': await MultipartFile.fromFile(imagePath.trim()),
+        if (hasImageBytes)
+          'Image': MultipartFile.fromBytes(
+            imageBytes!,
+            filename: 'image.png',
+          )
+        else if (hasImagePath)
+          'Image': await MultipartFile.fromFile(imagePath!.trim()),
       });
 
       final response = await _apiService.postMultipart('/AddProduct', formData);
@@ -102,8 +112,12 @@ class ProductRepo {
     required List<SizeQuantityModel> sizeQuantities,
     double? rating,
     String? imagePath,
+    Uint8List? imageBytes,
   }) async {
     try {
+      final hasImageBytes = imageBytes != null && imageBytes.isNotEmpty;
+      final hasImagePath = imagePath != null && imagePath.trim().isNotEmpty;
+
       final formData = FormData.fromMap({
         'id': productId,
         'name': name.trim(),
@@ -116,8 +130,13 @@ class ProductRepo {
           sizeQuantities.map((item) => item.toJson()).toList(),
         ),
         if (rating != null) 'rating': rating.toString(),
-        if (imagePath != null && imagePath.trim().isNotEmpty)
-          'Image': await MultipartFile.fromFile(imagePath.trim()),
+        if (hasImageBytes)
+          'Image': MultipartFile.fromBytes(
+            imageBytes!,
+            filename: 'image.png',
+          )
+        else if (hasImagePath)
+          'Image': await MultipartFile.fromFile(imagePath!.trim()),
       });
 
       final response = await _apiService.postMultipart('/EditProduct', formData);

@@ -12,12 +12,12 @@ const sendVerificationEmail = async (email, token) => {
                 "api-key": process.env.BREVO_API_KEY,
             },
             body: JSON.stringify({
-                sender: { name: "Coffee Shop", email: "mm.regouat@gmail.com" },
+                sender: { name: "elbess store", email: "mehennimohamed179@gmail.com" },
                 to: [{ email: email }],
-                subject: "Verify Your Email Address - Coffee Shop",
+                subject: "Verify Your Email Address - elbess store",
                 htmlContent: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #333;">Welcome to Coffee Shop!</h2>
+                        <h2 style="color: #333;">Welcome to elbess store!</h2>
                         <p>Please verify your email address by clicking the link below:</p>
                         <a href="${verificationUrl}" 
                            style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">

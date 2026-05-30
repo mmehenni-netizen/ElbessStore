@@ -72,6 +72,9 @@ const sendVerificationEmail = async (email, token) => {
         subject: 'Verify Your Email Address - Coffee Shop',
         html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 10000,
                 <h2 style="color: #333;">Welcome to Coffee Shop!</h2>
                 <p>Please verify your email address by clicking the link below:</p>
                 <a href="${verificationUrl}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">Verify Email</a>
@@ -84,6 +87,9 @@ const sendVerificationEmail = async (email, token) => {
         console.log(` Sending email to: ${email}`);
         const info = await transporter.sendMail(mailOptions);
         console.log(' Email sent:', info.messageId);
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 10000,
         return true;
     } catch (error) {
         console.error(' Error sending email:', error);
@@ -95,7 +101,10 @@ const sendVerificationEmail = async (email, token) => {
             console.log('2. Temporarily disable firewall/antivirus');
             console.log('3. Try using a VPN (some networks block SMTP)');
             console.log('4. Check if your ISP blocks port 587/465');
-            console.log('5. Try using Ethereal for testing instead:\n');
+            },
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 10000,
             console.log('   npm install nodemailer --save');
             console.log('   Then use this test code:');
             console.log(`

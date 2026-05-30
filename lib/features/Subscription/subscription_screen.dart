@@ -312,26 +312,41 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                    Text(title,
-                      style: TextStyle(
-                        fontFamily: 'bold', color: heading, fontWeight: FontWeight.w700, fontSize: 16)),
-                  if (recommended)
-                    _mostPopularBadge(badgeAnimation),
-                ],
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'bold',
+                  color: heading,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
               ),
+              if (recommended) ...[
+                const SizedBox(height: 8),
+                _mostPopularBadge(badgeAnimation),
+              ],
               const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.end,
                 children: [
-                    Text(price,
-                      style: TextStyle(
-                        fontFamily: 'bold', color: heading, fontSize: 18, fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 8),
+                  Text(
+                    price,
+                    style: TextStyle(
+                      fontFamily: 'bold',
+                      color: heading,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   if (priceSub != null)
-                    Text('($priceSub)', style: TextStyle(fontFamily: 'regular', color: bodyText)),
+                    Text(
+                      '($priceSub)',
+                      style: TextStyle(fontFamily: 'regular', color: bodyText),
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -344,12 +359,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                       .map((f) => Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 AnimatedOpacity(
                                   opacity: isSelected ? 1 : 0.8,
                                   duration: const Duration(milliseconds: 400),
                                   child: Container(
-                                    padding: const EdgeInsets.all(6),
+                                    margin: const EdgeInsets.only(top: 1),
+                                    padding: const EdgeInsets.all(5),
                                     decoration: BoxDecoration(
                                         color: Colors.white,
                                         shape: BoxShape.circle,
@@ -357,14 +374,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                           BoxShadow(
                                               color: Colors.black.withOpacity(0.06), blurRadius: 4)
                                         ]),
-                                    child: Icon(Icons.check, size: 14, color: primary),
+                                    child: Icon(Icons.check, size: 12, color: primary),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                Expanded(
-                                    child: Text(f,
-                                        style: TextStyle(
-                                                        fontFamily: 'regular', color: bodyText, fontSize: 14))),
+                                Flexible(
+                                  child: Text(
+                                    f,
+                                    maxLines: 2,
+                                    softWrap: true,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: 'regular',
+                                      color: bodyText,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ))
@@ -414,20 +440,29 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
             ],
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text('Most Popular', style: TextStyle(fontFamily: 'regular', fontSize: 12)),
+              Text(
+                'Most Popular',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontFamily: 'regular', fontSize: 12),
+              ),
               const SizedBox(width: 6),
               Container(
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                        colors: [Colors.white, Colors.amber.withOpacity(0.9)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        stops: [0.0, (controller?.value ?? 0.5)])),
-              )
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Colors.white, Colors.amber.withOpacity(0.9)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    stops: [0.0, (controller?.value ?? 0.5)],
+                  ),
+                ),
+              ),
             ],
           ),
         );

@@ -193,7 +193,7 @@ class ProductModel {
 		}
 
 		if (defaultTargetPlatform == TargetPlatform.android) {
-			return 'http://10.0.2.2:3000';
+			return 'https://elbessstore.onrender.com';
 		}
 
 		return 'http://localhost:3000';
